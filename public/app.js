@@ -7,6 +7,10 @@ const elements = {
   saveSettings: document.querySelector("#saveSettings"),
   groqStatus: document.querySelector("#groqStatus"),
   compilerStatus: document.querySelector("#compilerStatus"),
+  groqApiKey: document.querySelector("#groqApiKey"),
+  geminiApiKey: document.querySelector("#geminiApiKey"),
+  keyStorageNote: document.querySelector("#keyStorageNote"),
+  keyStorageHint: document.querySelector("#keyStorageHint"),
   speechModel: document.querySelector("#speechModel"),
   geminiModel: document.querySelector("#geminiModel"),
   groqModel: document.querySelector("#groqModel"),
@@ -51,6 +55,7 @@ const state = {
   timerId: null,
   busy: false,
   serverKeys: { groq: false, gemini: false },
+  userKeys: { groq: "", gemini: "" },
   desktopAutoCompile: false,
   recordingTarget: "transcript",
 };
@@ -94,20 +99,43 @@ function setStatus(element, ready, readyText, missingText) {
   element.lastChild.textContent = ` ${ready ? readyText : missingText}`;
 }
 
+function providerReady(provider) {
+  return Boolean(state.userKeys[provider] || state.serverKeys[provider]);
+}
+
+function requestKeyHeaders() {
+  const headers = {};
+  if (state.userKeys.groq) headers["x-promptde-groq-key"] = state.userKeys.groq;
+  if (state.userKeys.gemini) headers["x-promptde-gemini-key"] = state.userKeys.gemini;
+  return headers;
+}
+
+function configuredKeyMessage(provider) {
+  const name = provider === "gemini" ? "Gemini" : "Groq";
+  if (state.userKeys[provider]) return `${name} key ready for this browser session`;
+  return window.promptDeDesktop ? `${name} key saved locally` : `${name} key provided by the server`;
+}
+
+function updateApiKeyPlaceholders() {
+  elements.groqApiKey.placeholder = providerReady("groq") ? "Key configured — enter a new key to replace" : "gsk_…";
+  elements.geminiApiKey.placeholder = providerReady("gemini") ? "Key configured — enter a new key to replace" : "Enter your Gemini API key";
+}
+
 function updateConfigurationStatus() {
   setStatus(
     elements.groqStatus,
-    state.serverKeys.groq,
-    "Groq key loaded from .env",
-    "GROQ_API_KEY is missing from .env",
+    providerReady("groq"),
+    configuredKeyMessage("groq"),
+    "Add a Groq API key below",
   );
-  const compilerReady = state.compilerProvider === "gemini" ? state.serverKeys.gemini : state.serverKeys.groq;
+  const compilerReady = providerReady(state.compilerProvider);
   setStatus(
     elements.compilerStatus,
     compilerReady,
-    `${state.compilerProvider === "gemini" ? "Gemini" : "Groq"} compiler key loaded`,
-    `${state.compilerProvider === "gemini" ? "GEMINI_API_KEY" : "GROQ_API_KEY"} is missing from .env`,
+    `${configuredKeyMessage(state.compilerProvider)} for compilation`,
+    `Add a ${state.compilerProvider === "gemini" ? "Gemini" : "Groq"} key below`,
   );
+  updateApiKeyPlaceholders();
 }
 
 function updateWordCount() {
@@ -154,8 +182,8 @@ async function startRecording(target = "transcript") {
     showToast("This browser does not support microphone recording. You can still type a transcript.", "error");
     return;
   }
-  if (!state.serverKeys.groq) {
-    showToast("Add GROQ_API_KEY to .env and restart the server.", "error");
+  if (!providerReady("groq")) {
+    showToast("Add your Groq API key in Settings first.", "error");
     openSettings();
     return;
   }
@@ -224,6 +252,7 @@ async function transcribeRecording() {
   try {
     const response = await fetch("/api/transcribe", {
       method: "POST",
+      headers: requestKeyHeaders(),
       body: formData,
     });
     const data = await response.json();
@@ -308,9 +337,8 @@ async function compilePrompt() {
     return;
   }
   const config = compilerConfig();
-  const serverKeyAvailable = state.compilerProvider === "gemini" ? state.serverKeys.gemini : state.serverKeys.groq;
-  if (!serverKeyAvailable) {
-    showToast(`Add ${state.compilerProvider === "gemini" ? "GEMINI_API_KEY" : "GROQ_API_KEY"} to .env and restart the server.`, "error");
+  if (!providerReady(state.compilerProvider)) {
+    showToast(`Add your ${state.compilerProvider === "gemini" ? "Gemini" : "Groq"} API key in Settings first.`, "error");
     openSettings();
     return;
   }
@@ -319,7 +347,7 @@ async function compilePrompt() {
   elements.compileButton.disabled = true;
   elements.compileButton.querySelector("span").textContent = "Compiling…";
   try {
-    const headers = { "content-type": "application/json" };
+    const headers = { "content-type": "application/json", ...requestKeyHeaders() };
     const response = await fetch("/api/compile", {
       method: "POST",
       headers,
@@ -397,13 +425,53 @@ async function copyTranslation() {
   showToast("Translation copied to clipboard.");
 }
 
+function rememberWebKey(provider, value) {
+  if (!value) return;
+  state.userKeys[provider] = value;
+  try {
+    sessionStorage.setItem(`promptde:${provider}ApiKey`, value);
+  } catch {
+    // The key still remains available in memory when session storage is unavailable.
+  }
+}
+
+async function saveProviderSettings() {
+  const groqKey = elements.groqApiKey.value.trim();
+  const geminiKey = elements.geminiApiKey.value.trim();
+  const invalidKey = [groqKey, geminiKey].find((value) => value.length > 512 || /\s/u.test(value));
+  if (invalidKey) {
+    showToast("API keys cannot contain spaces and must be under 512 characters.", "error");
+    return;
+  }
+
+  elements.saveSettings.disabled = true;
+  elements.saveSettings.textContent = "Saving…";
+  try {
+    if (window.promptDeDesktop) {
+      const configured = await window.promptDeDesktop.saveApiKeys({ groqKey, geminiKey });
+      state.serverKeys.groq = Boolean(configured.groqConfigured);
+      state.serverKeys.gemini = Boolean(configured.geminiConfigured);
+    } else {
+      rememberWebKey("groq", groqKey);
+      rememberWebKey("gemini", geminiKey);
+    }
+    elements.groqApiKey.value = "";
+    elements.geminiApiKey.value = "";
+    updateConfigurationStatus();
+    closeSettings();
+    showToast(window.promptDeDesktop ? "API keys saved securely on this device." : "API keys are ready for this browser session.");
+  } catch (error) {
+    showToast(error.message || "Could not save the API keys.", "error");
+  } finally {
+    elements.saveSettings.disabled = false;
+    elements.saveSettings.textContent = "Save keys and settings";
+  }
+}
+
 elements.settingsButton.addEventListener("click", openSettings);
 elements.closeSettings.addEventListener("click", closeSettings);
 elements.drawerBackdrop.addEventListener("click", closeSettings);
-elements.saveSettings.addEventListener("click", () => {
-  closeSettings();
-  showToast("Settings are active for this tab.");
-});
+elements.saveSettings.addEventListener("click", saveProviderSettings);
 document.querySelectorAll("[data-provider]").forEach((button) => {
   button.addEventListener("click", () => setCompilerProvider(button.dataset.provider));
 });
@@ -454,6 +522,14 @@ document.addEventListener("keydown", (event) => {
 
 updateWordCount();
 updateTokenEstimate();
+if (!window.promptDeDesktop) {
+  try {
+    state.userKeys.groq = sessionStorage.getItem("promptde:groqApiKey") || "";
+    state.userKeys.gemini = sessionStorage.getItem("promptde:geminiApiKey") || "";
+  } catch {
+    // Continue with in-memory keys only when session storage is unavailable.
+  }
+}
 setCompilerProvider("gemini");
 
 fetch("/api/config")
@@ -466,6 +542,8 @@ fetch("/api/config")
   .catch(() => {});
 
 if (window.promptDeDesktop) {
+  elements.keyStorageNote.innerHTML = "<strong>Private desktop storage</strong><br />Keys are saved only in PromptDe’s owner-readable local configuration file and are never exposed back to the page.";
+  elements.keyStorageHint.textContent = "Saved keys become active immediately. Leave a key blank to keep the currently saved value.";
   elements.openConfigFolder.classList.remove("hidden");
   elements.openConfigFolder.addEventListener("click", () => window.promptDeDesktop.openConfigFolder());
   window.promptDeDesktop.getInfo().then((info) => {

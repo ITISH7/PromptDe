@@ -92,6 +92,9 @@ button { color: inherit; }
 .top-actions { display: flex; align-items: center; gap: 12px; }
 .shortcut-pill { display: flex; align-items: center; gap: 4px; color: var(--quiet); font-size: 9px; }
 .shortcut-pill kbd { padding: 3px 6px; }
+.github-link { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 11px; text-decoration: none; }
+.github-link:hover { border-color: var(--line-strong); color: var(--text); }
+.github-link svg { width: 15px; fill: currentColor; }
 .privacy-pill {
   display: flex;
   align-items: center;
@@ -376,7 +379,7 @@ kbd { padding: 1px 4px; border: 1px solid var(--line); border-radius: 3px; backg
 
 @media (max-width: 600px) {
   .topbar, main { width: min(100% - 28px, 1160px); }
-  .privacy-pill { display: none; }
+  .privacy-pill, .github-link span { display: none; }
   main { padding-top: 44px; }
   .hero { margin-bottom: 32px; }
   .hero h1 { font-size: 42px; letter-spacing: -2.2px; }

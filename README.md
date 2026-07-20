@@ -2,6 +2,8 @@
 
 PromptDe is a Windows and Linux desktop utility that turns Hindi, English, or Hinglish speech into concise, structured English prompts for coding agents.
 
+Repository: [github.com/ITISH7/PromptDe](https://github.com/ITISH7/PromptDe)
+
 ## Features
 
 - Runs from the desktop tray and activates globally with `Ctrl+Shift+Space`.
@@ -12,7 +14,8 @@ PromptDe is a Windows and Linux desktop utility that turns Hindi, English, or Hi
 - Supports Quick, Standard, and Detailed output modes.
 - Accepts optional project context without requiring repository access.
 - Estimates output tokens and copies the final prompt to the clipboard.
-- Keeps API keys in server-side `.env` configuration and never exposes them to the renderer.
+- Keeps configured desktop/server API keys in private `.env` storage without exposing saved values to the renderer.
+- Lets each user bring their own Groq and Gemini API keys from the Settings drawer.
 
 ## Requirements
 
@@ -35,6 +38,10 @@ cp .env.example .env
 ```
 
 For an installed desktop build, open **Settings → Open configuration folder**, edit the generated `.env`, and restart PromptDe.
+
+You can also enter or replace both keys directly in **Settings**. The desktop app writes them to its owner-readable local configuration file and activates them immediately. It never reads saved key values back into the page.
+
+In the web app, keys entered in **Settings** are kept only in browser session storage, sent with provider requests, and never persisted by the PromptDe server. They are cleared when the browser tab is closed.
 
 Keys remain in the local main/server process and are never returned to the renderer. They are not logged, cached, placed in URLs, or sent through frontend request headers. Keep `.env` private; it is excluded by `.gitignore`.
 

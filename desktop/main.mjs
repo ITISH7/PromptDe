@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -41,6 +41,32 @@ function ensureDesktopEnv() {
   if (!existsSync(envPath)) writeFileSync(envPath, ENV_TEMPLATE, { mode: 0o600 });
   loadEnvFiles([join(process.cwd(), ".env"), envPath]);
   return { configDir, envPath };
+}
+
+function saveDesktopApiKeys(envPath, input = {}) {
+  const updates = [
+    ["GROQ_API_KEY", input.groqKey],
+    ["GEMINI_API_KEY", input.geminiKey],
+  ].map(([name, rawValue]) => {
+    const value = typeof rawValue === "string" ? rawValue.trim() : "";
+    if (value.length > 512 || /\s/u.test(value)) throw new Error(`${name} is not a valid API key.`);
+    return [name, value];
+  });
+
+  let contents = existsSync(envPath) ? readFileSync(envPath, "utf8") : ENV_TEMPLATE;
+  for (const [name, value] of updates) {
+    if (!value) continue;
+    const line = `${name}=${value}`;
+    const pattern = new RegExp(`^${name}=.*$`, "mu");
+    contents = pattern.test(contents) ? contents.replace(pattern, line) : `${contents.trimEnd()}\n${line}\n`;
+    process.env[name] = value;
+  }
+  writeFileSync(envPath, contents, { mode: 0o600 });
+  chmodSync(envPath, 0o600);
+  return {
+    groqConfigured: Boolean(process.env.GROQ_API_KEY),
+    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+  };
 }
 
 function showWindow() {
@@ -135,6 +161,7 @@ app.whenReady().then(async () => {
     envPath,
   }));
   ipcMain.handle("promptde:open-config-folder", () => shell.openPath(configDir));
+  ipcMain.handle("promptde:save-api-keys", (_event, keys) => saveDesktopApiKeys(envPath, keys));
 
   Menu.setApplicationMenu(null);
   createWindow(started.url);

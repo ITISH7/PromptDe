@@ -7,6 +7,7 @@ const HOST = "127.0.0.1";
 const APP_DIR = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(APP_DIR, "public");
 const MAX_JSON_BYTES = 1_000_000;
+const MAX_API_KEY_LENGTH = 512;
 
 export function loadEnvFiles(paths = [join(APP_DIR, ".env"), join(process.cwd(), ".env")]) {
   for (const envPath of [...new Set(paths)]) {
@@ -70,8 +71,18 @@ function upstreamError(provider, status, raw) {
   return error;
 }
 
+function requestApiKey(request, provider) {
+  const headerName = provider === "gemini" ? "x-promptde-gemini-key" : "x-promptde-groq-key";
+  const supplied = request.headers[headerName];
+  if (typeof supplied === "string") {
+    const value = supplied.trim();
+    if (value && value.length <= MAX_API_KEY_LENGTH) return value;
+  }
+  return provider === "gemini" ? process.env.GEMINI_API_KEY : process.env.GROQ_API_KEY;
+}
+
 async function transcribe(request, response) {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = requestApiKey(request, "groq");
   if (!apiKey) return sendJson(response, 400, { error: "A Groq API key is required." });
 
   const contentType = request.headers["content-type"] || "";
@@ -219,9 +230,7 @@ function validateCompiledPrompt(value) {
 
 async function compile(request, response) {
   const body = await readJson(request);
-  const apiKey = (
-    body.provider === "gemini" ? process.env.GEMINI_API_KEY : process.env.GROQ_API_KEY
-  );
+  const apiKey = requestApiKey(request, body.provider === "gemini" ? "gemini" : "groq");
   if (!apiKey) return sendJson(response, 400, { error: "A compiler API key is required." });
   if (!body.transcript?.trim()) {
     return sendJson(response, 400, { error: "Add or record a transcript first." });
@@ -240,7 +249,7 @@ async function compile(request, response) {
   } catch (error) {
     const isTemporaryFailure = [429, 500, 502, 503, 504].includes(error.upstreamStatus);
     const fallbackProvider = providerUsed === "gemini" ? "groq" : "gemini";
-    const fallbackKey = fallbackProvider === "gemini" ? process.env.GEMINI_API_KEY : process.env.GROQ_API_KEY;
+    const fallbackKey = requestApiKey(request, fallbackProvider);
     if (!isTemporaryFailure || !fallbackKey) throw error;
 
     const originalProvider = providerUsed;
@@ -308,7 +317,7 @@ export function createPromptDeServer() {
       if (error.allProvidersFailed) {
         message = "Both prompt providers are temporarily unavailable. Please wait a moment and try again.";
       } else if ([401, 403].includes(error.upstreamStatus)) {
-        message = "A provider rejected its API key. Check your .env values and restart the server.";
+        message = "A provider rejected its API key. Check the key in Settings and try again.";
       } else if (error.upstreamStatus === 429) {
         message = "The provider is temporarily busy. Please wait a moment and try again.";
       } else if (error.status && !error.upstreamStatus) {
@@ -337,7 +346,7 @@ const isDirectRun = process.argv[1]
 if (isDirectRun) {
   startServer().then(({ url }) => {
     console.log(`PromptDe is running at ${url}`);
-    console.log("API keys are loaded from .env and are never sent to the browser.");
+    console.log("Server API keys are loaded from .env; optional user keys are accepted per request and are never stored by the server.");
   }).catch((error) => {
     console.error(error);
     process.exitCode = 1;

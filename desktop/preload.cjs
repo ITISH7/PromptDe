@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("promptDeDesktop", {
   getInfo: () => ipcRenderer.invoke("promptde:get-desktop-info"),
   openConfigFolder: () => ipcRenderer.invoke("promptde:open-config-folder"),
+  saveApiKeys: (keys) => ipcRenderer.invoke("promptde:save-api-keys", keys),
   onActivate: (callback) => {
     const handler = () => callback();
     ipcRenderer.on("promptde:activate", handler);

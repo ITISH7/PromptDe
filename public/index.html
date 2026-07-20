@@ -20,7 +20,11 @@
       </a>
       <div class="top-actions">
         <span class="shortcut-pill hidden" id="desktopShortcut"><kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>Space</kbd></span>
-        <span class="privacy-pill"><span class="status-dot"></span> Keys stay local</span>
+        <a class="github-link" href="https://github.com/ITISH7/PromptDe" target="_blank" rel="noopener noreferrer" aria-label="View PromptDe on GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 6.82a9.6 9.6 0 0 1 2.5.34c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.56 4.93.36.31.68.92.68 1.86V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
+          <span>GitHub</span>
+        </a>
+        <span class="privacy-pill"><span class="status-dot"></span> Keys stay private</span>
         <button class="icon-button" id="settingsButton" type="button" aria-label="Open settings" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.16.38.37.72.6 1 .3.36.7.57 1.1.6h.09v4h-.09a1.7 1.7 0 0 0-1.7.4Z"/></svg>
         </button>
@@ -169,12 +173,14 @@
 
       <div class="security-note">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5z"/></svg>
-        <p><strong>Server-side keys</strong><br />Provider keys are loaded from <code>.env</code> and are never exposed to this page.</p>
+        <p id="keyStorageNote"><strong>Bring your own keys</strong><br />Keys entered on the web stay in this browser tab and are never stored by the server.</p>
       </div>
 
       <section class="settings-section">
         <div class="settings-title"><span>Speech-to-text</span><span class="provider-tag">Groq</span></div>
         <div class="config-status" id="groqStatus"><span></span> Checking Groq configuration…</div>
+        <label for="groqApiKey">Groq API key</label>
+        <input id="groqApiKey" type="password" placeholder="gsk_…" autocomplete="off" spellcheck="false" />
         <label for="speechModel">Transcription model</label>
         <select id="speechModel">
           <option value="whisper-large-v3">Whisper Large V3 — Accuracy</option>
@@ -190,6 +196,8 @@
         </div>
         <div class="config-status" id="compilerStatus"><span></span> Checking compiler configuration…</div>
         <div id="geminiSettings">
+          <label for="geminiApiKey">Gemini API key</label>
+          <input id="geminiApiKey" type="password" placeholder="Enter your Gemini API key" autocomplete="off" spellcheck="false" />
           <label for="geminiModel">Gemini model</label>
           <input id="geminiModel" type="text" value="gemini-3.5-flash" spellcheck="false" />
         </div>
@@ -203,9 +211,9 @@
         </div>
       </section>
 
-      <button class="save-settings" id="saveSettings" type="button">Use these settings</button>
+      <button class="save-settings" id="saveSettings" type="button">Save keys and settings</button>
       <button class="open-config hidden" id="openConfigFolder" type="button">Open configuration folder</button>
-      <p class="free-tier-note">Keys are read from <code>.env</code> when the server starts. Restart the server after changing that file.</p>
+      <p class="free-tier-note" id="keyStorageHint">Web keys are cleared when this browser tab is closed. PromptDe does not log or persist them on the server.</p>
     </aside>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

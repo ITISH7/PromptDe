@@ -1,0 +1,36 @@
+name: Build desktop installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            command: pack:linux
+            artifact: linux
+          - os: windows-latest
+            command: pack:windows
+            artifact: windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ${{ matrix.command }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: promptde-${{ matrix.artifact }}
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.exe
+          if-no-files-found: error

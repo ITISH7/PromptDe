@@ -1,41 +1,82 @@
-# BolPrompt
+# PromptDe Desktop
 
-BolPrompt turns Hindi, English, or Hinglish speech into concise, structured prompts for coding agents.
+PromptDe is a Windows and Linux desktop utility that turns Hindi, English, or Hinglish speech into concise, structured English prompts for coding agents.
 
 ## Features
 
-- Records from the browser microphone.
+- Runs from the desktop tray and activates globally with `Ctrl+Shift+Space`.
+- Records from the system microphone and automatically completes the workflow when activated by the shortcut.
 - Transcribes multilingual speech using Groq Whisper.
-- Compiles the transcript with Gemini or Groq.
-- Uses Groq as the reliable default and automatically fails over between Groq and Gemini when either provider is temporarily overloaded or rate-limited.
+- Produces an explicit English translation/interpretation.
+- Compiles the translated intent with Gemini, with automatic Groq failover when either provider is temporarily overloaded or rate-limited.
 - Supports Quick, Standard, and Detailed output modes.
 - Accepts optional project context without requiring repository access.
 - Estimates output tokens and copies the final prompt to the clipboard.
-- Keeps API keys in browser memory only. They are never persisted by the app.
+- Keeps API keys in server-side `.env` configuration and never exposes them to the renderer.
 
 ## Requirements
 
-- Node.js 18.17 or newer.
+- Node.js 18.17 or newer for development.
 - A Groq API key for speech transcription.
 - A Gemini API key for the default prompt compiler, or use Groq for both steps.
 
-Both providers offer free tiers, but their quotas and data policies can change. BolPrompt never enables billing or upgrades a provider account.
+Both providers offer free tiers, but their quotas and data policies can change. PromptDe never enables billing or upgrades a provider account.
 
-## Run locally
+## Configure API keys
 
 ```bash
 npm start
 ```
 
-Copy the environment template and add your keys:
+For development, copy the environment template and add your keys:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env`, then start the app and open <http://127.0.0.1:4173>.
+For an installed desktop build, open **Settings → Open configuration folder**, edit the generated `.env`, and restart PromptDe.
 
-The server intentionally binds only to `127.0.0.1`. Keys are accepted only from `.env`, remain server-side, and are never returned to the browser. They are not logged, cached, placed in URLs, or sent through frontend request headers. Keep `.env` private; it is excluded by `.gitignore`.
+Keys remain in the local main/server process and are never returned to the renderer. They are not logged, cached, placed in URLs, or sent through frontend request headers. Keep `.env` private; it is excluded by `.gitignore`.
+
+## Run the desktop app
+
+```bash
+npm install
+npm run desktop
+```
+
+Press `Ctrl+Shift+Space` anywhere to show PromptDe and start recording. Press it again to stop, transcribe, translate, and compile automatically. Closing the window keeps PromptDe available in the system tray.
+
+The desktop app also registers these global shortcuts:
+
+- Press `Ctrl+Shift+Backspace` (`Cmd+Shift+Backspace` on macOS) to clear the transcript.
+- Press `Ctrl+Alt+C` (`Cmd+Option+C` on macOS) to start recording project context. Press it again to stop and append the transcription to Project Context.
+- Press `Ctrl+Alt+E` (`Cmd+Option+E` on macOS) to copy the English translation.
+- Press `Ctrl+Alt+P` (`Cmd+Option+P` on macOS) to copy the compiled prompt.
+
+The original browser development server remains available with `npm start`.
+
+## Build installers
+
+Linux AppImage and Debian package:
+
+```bash
+npm run pack:linux
+```
+
+Windows NSIS installer (normally run on Windows or a configured cross-build machine):
+
+```bash
+npm run pack:windows
+```
+
+Portable Windows ZIP, which can also be cross-built from Linux:
+
+```bash
+npm run pack:windows:portable
+```
+
+The included GitHub Actions workflow builds native Linux and Windows artifacts on their respective operating systems.
 
 ## Check the source
 

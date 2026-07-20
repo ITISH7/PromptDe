@@ -1,31 +1,33 @@
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
-import { extname, join, normalize } from "node:path";
+import { dirname, extname, join, normalize, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HOST = "127.0.0.1";
-const PUBLIC_DIR = join(process.cwd(), "public");
+const APP_DIR = dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = join(APP_DIR, "public");
 const MAX_JSON_BYTES = 1_000_000;
 
-function loadEnvFile() {
-  const envPath = join(process.cwd(), ".env");
-  if (!existsSync(envPath)) return;
-  for (const rawLine of readFileSync(envPath, "utf8").split(/\r?\n/u)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const separator = line.indexOf("=");
-    if (separator < 1) continue;
-    const key = line.slice(0, separator).trim();
-    let value = line.slice(separator + 1).trim();
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(key)) continue;
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
+export function loadEnvFiles(paths = [join(APP_DIR, ".env"), join(process.cwd(), ".env")]) {
+  for (const envPath of [...new Set(paths)]) {
+    if (!existsSync(envPath)) continue;
+    for (const rawLine of readFileSync(envPath, "utf8").split(/\r?\n/u)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      const separator = line.indexOf("=");
+      if (separator < 1) continue;
+      const key = line.slice(0, separator).trim();
+      let value = line.slice(separator + 1).trim();
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(key)) continue;
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      if (value && process.env[key] === undefined) process.env[key] = value;
     }
-    if (process.env[key] === undefined) process.env[key] = value;
   }
 }
 
-loadEnvFile();
-const PORT = Number(process.env.PORT || 4173);
+loadEnvFiles();
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -98,6 +100,7 @@ const PROMPT_SCHEMA = {
   type: "object",
   properties: {
     title: { type: "string" },
+    translatedText: { type: "string" },
     objective: { type: "string" },
     requirements: { type: "array", items: { type: "string" } },
     constraints: { type: "array", items: { type: "string" } },
@@ -108,6 +111,7 @@ const PROMPT_SCHEMA = {
   },
   required: [
     "title",
+    "translatedText",
     "objective",
     "requirements",
     "constraints",
@@ -128,6 +132,7 @@ function compilerInstruction(mode) {
   return `You are a prompt compiler for coding agents. Convert an informal Hindi, English, or Hinglish transcript into a precise, token-efficient English coding task.
 
 Rules:
+- First create translatedText: a faithful, plain-English translation/normalization of the voice transcript. Preserve technical names, code symbols, and intent; do not add requirements.
 - Preserve the user's intent, named technologies, constraints, and requested scope.
 - Do not invent product requirements, file names, libraries, or technical decisions.
 - Information absent from the transcript and project context must never appear in requirements, acceptance criteria, or agentPrompt. Keep unknown routes, file locations, UI choices, and behavior as questions instead of guessing them.
@@ -200,7 +205,7 @@ async function compileWithGemini(apiKey, body) {
 
 function validateCompiledPrompt(value) {
   if (!value || typeof value !== "object") throw new Error("The model returned an invalid result.");
-  const stringFields = ["title", "objective", "agentPrompt"];
+  const stringFields = ["title", "translatedText", "objective", "agentPrompt"];
   const arrayFields = ["requirements", "constraints", "acceptanceCriteria", "assumptions", "questions"];
   for (const field of stringFields) {
     if (typeof value[field] !== "string") throw new Error(`The result is missing ${field}.`);
@@ -279,42 +284,62 @@ function serveStatic(pathname, response) {
   createReadStream(filePath).pipe(response);
 }
 
-const server = createServer(async (request, response) => {
-  try {
-    const url = new URL(request.url, `http://${request.headers.host || HOST}`);
-    if (request.method === "POST" && url.pathname === "/api/transcribe") {
-      return await transcribe(request, response);
+export function createPromptDeServer() {
+  return createServer(async (request, response) => {
+    try {
+      const url = new URL(request.url, `http://${request.headers.host || HOST}`);
+      if (request.method === "POST" && url.pathname === "/api/transcribe") {
+        return await transcribe(request, response);
+      }
+      if (request.method === "POST" && url.pathname === "/api/compile") {
+        return await compile(request, response);
+      }
+      if (request.method === "GET" && url.pathname === "/api/config") {
+        return sendJson(response, 200, {
+          groqConfigured: Boolean(process.env.GROQ_API_KEY),
+          geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+        });
+      }
+      if (request.method === "GET") return serveStatic(url.pathname, response);
+      sendJson(response, 405, { error: "Method not allowed." });
+    } catch (error) {
+      console.error(error.message);
+      let message = "Something went wrong. Please try again.";
+      if (error.allProvidersFailed) {
+        message = "Both prompt providers are temporarily unavailable. Please wait a moment and try again.";
+      } else if ([401, 403].includes(error.upstreamStatus)) {
+        message = "A provider rejected its API key. Check your .env values and restart the server.";
+      } else if (error.upstreamStatus === 429) {
+        message = "The provider is temporarily busy. Please wait a moment and try again.";
+      } else if (error.status && !error.upstreamStatus) {
+        message = error.message;
+      }
+      sendJson(response, error.status || 500, { error: message });
     }
-    if (request.method === "POST" && url.pathname === "/api/compile") {
-      return await compile(request, response);
-    }
-    if (request.method === "GET" && url.pathname === "/api/config") {
-      return sendJson(response, 200, {
-        groqConfigured: Boolean(process.env.GROQ_API_KEY),
-        geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
-      });
-    }
-    if (request.method === "GET") return serveStatic(url.pathname, response);
-    sendJson(response, 405, { error: "Method not allowed." });
-  } catch (error) {
-    console.error(error.message);
-    let message = "Something went wrong. Please try again.";
-    if (error.allProvidersFailed) {
-      message = "Both prompt providers are temporarily unavailable. Please wait a moment and try again.";
-    } else if ([401, 403].includes(error.upstreamStatus)) {
-      message = "A provider rejected its API key. Check your .env values and restart the server.";
-    } else if (error.upstreamStatus === 429) {
-      message = "The provider is temporarily busy. Please wait a moment and try again.";
-    } else if (error.status && !error.upstreamStatus) {
-      message = error.message;
-    }
-    sendJson(response, error.status || 500, {
-      error: message,
-    });
-  }
-});
+  });
+}
 
-server.listen(PORT, HOST, () => {
-  console.log(`BolPrompt is running at http://${HOST}:${PORT}`);
-  console.log("API keys are loaded from .env and are never sent to the browser.");
-});
+export function startServer({ host = HOST, port = Number(process.env.PORT || 4173) } = {}) {
+  return new Promise((resolveStart, rejectStart) => {
+    const server = createPromptDeServer();
+    server.once("error", rejectStart);
+    server.listen(port, host, () => {
+      server.off("error", rejectStart);
+      const actualPort = server.address().port;
+      resolveStart({ server, host, port: actualPort, url: `http://${host}:${actualPort}` });
+    });
+  });
+}
+
+const isDirectRun = process.argv[1]
+  && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+
+if (isDirectRun) {
+  startServer().then(({ url }) => {
+    console.log(`PromptDe is running at ${url}`);
+    console.log("API keys are loaded from .env and are never sent to the browser.");
+  }).catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="background" x1="80" y1="40" x2="450" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#171d2b"/>
+      <stop offset="1" stop-color="#080b12"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="130" y1="115" x2="390" y2="402" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff956f"/>
+      <stop offset="1" stop-color="#ff5d30"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#background)"/>
+  <rect x="28" y="28" width="456" height="456" rx="98" fill="none" stroke="#ffffff" stroke-opacity=".08" stroke-width="4"/>
+  <circle cx="256" cy="256" r="154" fill="#ff6a3d" fill-opacity=".08" stroke="#ff6a3d" stroke-opacity=".2" stroke-width="4"/>
+  <g fill="url(#signal)">
+    <rect x="128" y="226" width="24" height="60" rx="12"/>
+    <rect x="174" y="183" width="24" height="146" rx="12"/>
+    <rect x="220" y="132" width="24" height="248" rx="12"/>
+    <rect x="266" y="162" width="24" height="188" rx="12"/>
+    <rect x="312" y="198" width="24" height="116" rx="12"/>
+    <rect x="358" y="229" width="24" height="54" rx="12"/>
+  </g>
+</svg>

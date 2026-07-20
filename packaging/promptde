@@ -1,0 +1,4 @@
+#!/bin/sh
+unset ELECTRON_RUN_AS_NODE
+unset ELECTRON_NO_ATTACH_CONSOLE
+exec "/home/fiftyfive/.local/opt/promptde/promptde" "$@"

@@ -1,5 +1,6 @@
 const elements = {
   settingsButton: document.querySelector("#settingsButton"),
+  desktopShortcut: document.querySelector("#desktopShortcut"),
   settingsDrawer: document.querySelector("#settingsDrawer"),
   drawerBackdrop: document.querySelector("#drawerBackdrop"),
   closeSettings: document.querySelector("#closeSettings"),
@@ -20,22 +21,28 @@ const elements = {
   transcript: document.querySelector("#transcript"),
   transcriptCount: document.querySelector("#transcriptCount"),
   clearTranscript: document.querySelector("#clearTranscript"),
+  contextDetails: document.querySelector(".context-details"),
   context: document.querySelector("#context"),
   compileButton: document.querySelector("#compileButton"),
   emptyOutput: document.querySelector("#emptyOutput"),
   result: document.querySelector("#result"),
   resultBadge: document.querySelector("#resultBadge"),
+  translationPreview: document.querySelector("#translationPreview"),
+  translatedText: document.querySelector("#translatedText"),
+  copyTranslation: document.querySelector("#copyTranslation"),
   resultTitle: document.querySelector("#resultTitle"),
   agentPrompt: document.querySelector("#agentPrompt"),
   resultInsights: document.querySelector("#resultInsights"),
   resultNotes: document.querySelector("#resultNotes"),
   tokenCount: document.querySelector("#tokenCount"),
   copyButton: document.querySelector("#copyButton"),
+  copyPromptLabel: document.querySelector("#copyPromptLabel"),
   toast: document.querySelector("#toast"),
+  openConfigFolder: document.querySelector("#openConfigFolder"),
 };
 
 const state = {
-  compilerProvider: "groq",
+  compilerProvider: "gemini",
   promptMode: "standard",
   mediaRecorder: null,
   mediaStream: null,
@@ -44,6 +51,8 @@ const state = {
   timerId: null,
   busy: false,
   serverKeys: { groq: false, gemini: false },
+  desktopAutoCompile: false,
+  recordingTarget: "transcript",
 };
 
 let toastTimeout;
@@ -106,6 +115,13 @@ function updateWordCount() {
   elements.transcriptCount.textContent = `${words} ${words === 1 ? "word" : "words"}`;
 }
 
+function clearTranscript() {
+  elements.transcript.value = "";
+  updateWordCount();
+  elements.transcript.focus();
+  showToast("Transcript cleared.");
+}
+
 function updateTokenEstimate() {
   const text = elements.agentPrompt.value.trim();
   const estimated = text ? Math.max(1, Math.ceil(text.length / 4)) : 0;
@@ -133,7 +149,7 @@ function resetRecorderUi() {
   clearInterval(state.timerId);
 }
 
-async function startRecording() {
+async function startRecording(target = "transcript") {
   if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
     showToast("This browser does not support microphone recording. You can still type a transcript.", "error");
     return;
@@ -145,6 +161,7 @@ async function startRecording() {
   }
 
   try {
+    state.recordingTarget = target;
     state.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     state.audioChunks = [];
     const mimeType = supportedAudioMimeType();
@@ -156,8 +173,8 @@ async function startRecording() {
     state.mediaRecorder.start(250);
     state.startedAt = Date.now();
     elements.recorder.classList.add("recording");
-    elements.recordTitle.textContent = "Listening… tap to stop";
-    elements.recordHint.textContent = "Speak in Hindi, English, or Hinglish";
+    elements.recordTitle.textContent = target === "context" ? "Listening for project context…" : "Listening… tap to stop";
+    elements.recordHint.textContent = target === "context" ? "Press the shortcut again to stop" : "Speak in Hindi, English, or Hinglish";
     elements.recordButton.setAttribute("aria-label", "Stop recording");
     state.timerId = setInterval(() => {
       const elapsed = (Date.now() - state.startedAt) / 1000;
@@ -165,6 +182,7 @@ async function startRecording() {
       if (elapsed >= 300) stopRecording();
     }, 250);
   } catch (error) {
+    state.recordingTarget = "transcript";
     showToast(error.name === "NotAllowedError" ? "Microphone permission was denied." : `Could not start the microphone: ${error.message}`, "error");
   }
 }
@@ -180,12 +198,15 @@ function stopRecording() {
 }
 
 async function transcribeRecording() {
+  const recordingTarget = state.recordingTarget;
   const mimeType = state.mediaRecorder?.mimeType || "audio/webm";
   const extension = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
   const audio = new Blob(state.audioChunks, { type: mimeType });
   state.mediaRecorder = null;
 
   if (audio.size < 500) {
+    state.desktopAutoCompile = false;
+    state.recordingTarget = "transcript";
     resetRecorderUi();
     showToast("The recording was too short. Please try again.", "error");
     return;
@@ -199,6 +220,7 @@ async function transcribeRecording() {
   if (elements.language.value !== "auto") formData.append("language", elements.language.value);
   formData.append("prompt", "Coding task with Hindi, English, Hinglish, source code symbols, package names, file paths, and technical terminology.");
 
+  let shouldAutoCompile = false;
   try {
     const response = await fetch("/api/transcribe", {
       method: "POST",
@@ -206,15 +228,28 @@ async function transcribeRecording() {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Transcription failed.");
-    const existing = elements.transcript.value.trim();
-    elements.transcript.value = [existing, data.text.trim()].filter(Boolean).join(existing ? "\n" : "");
-    updateWordCount();
-    showToast("Transcription ready. Review it, then compile your prompt.");
+    const destination = recordingTarget === "context" ? elements.context : elements.transcript;
+    const existing = destination.value.trim();
+    destination.value = [existing, data.text.trim()].filter(Boolean).join(existing ? "\n" : "");
+    if (recordingTarget === "context") {
+      elements.contextDetails.open = true;
+      destination.focus();
+    } else {
+      updateWordCount();
+    }
+    shouldAutoCompile = recordingTarget === "transcript" && state.desktopAutoCompile;
+    state.desktopAutoCompile = false;
+    showToast(recordingTarget === "context"
+      ? "Voice transcription added to project context."
+      : shouldAutoCompile ? "Transcription ready. Creating your prompt…" : "Transcription ready. Review it, then compile your prompt.");
   } catch (error) {
+    state.desktopAutoCompile = false;
     showToast(error.message, "error");
   } finally {
+    state.recordingTarget = "transcript";
     resetRecorderUi();
   }
+  if (shouldAutoCompile) await compilePrompt();
 }
 
 function compilerConfig() {
@@ -304,6 +339,8 @@ async function compilePrompt() {
       ? `Ready via ${usedProvider} fallback`
       : `Ready via ${usedProvider}`;
     elements.agentPrompt.value = data.agentPrompt;
+    elements.translatedText.textContent = data.translatedText || transcript;
+    elements.translationPreview.classList.toggle("hidden", !elements.translatedText.textContent);
     elements.emptyOutput.classList.add("hidden");
     elements.result.classList.remove("hidden");
     renderInsights(data);
@@ -322,17 +359,42 @@ async function compilePrompt() {
 
 async function copyPrompt() {
   const text = elements.agentPrompt.value.trim();
-  if (!text) return;
+  if (!text) {
+    showToast("Compile a prompt before copying it.", "error");
+    return;
+  }
   try {
     await navigator.clipboard.writeText(text);
-    elements.copyButton.lastChild.textContent = " Copied";
+    elements.copyPromptLabel.textContent = "Copied";
     showToast("Prompt copied to clipboard.");
-    setTimeout(() => { elements.copyButton.lastChild.textContent = " Copy prompt"; }, 1600);
+    setTimeout(() => { elements.copyPromptLabel.textContent = "Copy prompt"; }, 1600);
   } catch {
     elements.agentPrompt.select();
     document.execCommand("copy");
     showToast("Prompt copied to clipboard.");
   }
+}
+
+async function copyTranslation() {
+  const text = elements.translatedText.textContent.trim();
+  if (!text) {
+    showToast("Compile a prompt before copying its translation.", "error");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const temporary = document.createElement("textarea");
+    temporary.value = text;
+    temporary.setAttribute("readonly", "");
+    temporary.style.position = "fixed";
+    temporary.style.opacity = "0";
+    document.body.append(temporary);
+    temporary.select();
+    document.execCommand("copy");
+    temporary.remove();
+  }
+  showToast("Translation copied to clipboard.");
 }
 
 elements.settingsButton.addEventListener("click", openSettings);
@@ -356,16 +418,34 @@ elements.recordButton.addEventListener("click", () => {
   else startRecording();
 });
 elements.transcript.addEventListener("input", updateWordCount);
-elements.clearTranscript.addEventListener("click", () => {
-  elements.transcript.value = "";
-  updateWordCount();
-  elements.transcript.focus();
-});
+elements.clearTranscript.addEventListener("click", clearTranscript);
 elements.agentPrompt.addEventListener("input", updateTokenEstimate);
 elements.compileButton.addEventListener("click", compilePrompt);
 elements.copyButton.addEventListener("click", copyPrompt);
+elements.copyTranslation.addEventListener("click", copyTranslation);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeSettings();
+  if (!window.promptDeDesktop && (event.ctrlKey || event.metaKey) && event.shiftKey && event.key === "Backspace") {
+    event.preventDefault();
+    clearTranscript();
+    return;
+  }
+  if (!window.promptDeDesktop && (event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === "c") {
+    event.preventDefault();
+    if (state.mediaRecorder?.state === "recording") stopRecording();
+    else startRecording("context");
+    return;
+  }
+  if (!window.promptDeDesktop && (event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === "e") {
+    event.preventDefault();
+    copyTranslation();
+    return;
+  }
+  if (!window.promptDeDesktop && (event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === "p") {
+    event.preventDefault();
+    copyPrompt();
+    return;
+  }
   if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
     event.preventDefault();
     compilePrompt();
@@ -374,7 +454,7 @@ document.addEventListener("keydown", (event) => {
 
 updateWordCount();
 updateTokenEstimate();
-setCompilerProvider("groq");
+setCompilerProvider("gemini");
 
 fetch("/api/config")
   .then((response) => response.json())
@@ -384,3 +464,27 @@ fetch("/api/config")
     updateConfigurationStatus();
   })
   .catch(() => {});
+
+if (window.promptDeDesktop) {
+  elements.openConfigFolder.classList.remove("hidden");
+  elements.openConfigFolder.addEventListener("click", () => window.promptDeDesktop.openConfigFolder());
+  window.promptDeDesktop.getInfo().then((info) => {
+    elements.desktopShortcut.classList.remove("hidden");
+    elements.desktopShortcut.title = `Global recording shortcut: ${info.shortcut}`;
+  }).catch(() => {});
+  window.promptDeDesktop.onActivate(() => {
+    if (state.mediaRecorder?.state === "recording") {
+      stopRecording();
+      return;
+    }
+    state.desktopAutoCompile = true;
+    startRecording();
+  });
+  window.promptDeDesktop.onClearTranscript(clearTranscript);
+  window.promptDeDesktop.onRecordContext(() => {
+    if (state.mediaRecorder?.state === "recording") stopRecording();
+    else startRecording("context");
+  });
+  window.promptDeDesktop.onCopyTranslation(copyTranslation);
+  window.promptDeDesktop.onCopyPrompt(copyPrompt);
+}

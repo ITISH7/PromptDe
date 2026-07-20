@@ -1,14 +1,55 @@
 {
-  "name": "bolprompt",
+  "name": "promptde",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "desktop/main.mjs",
+  "desktopName": "PromptDe",
   "description": "Voice-to-agent prompt compiler for Hindi, English, and Hinglish.",
+  "homepage": "https://promptde.local",
+  "author": {
+    "name": "PromptDe Contributors",
+    "email": "support@promptde.local"
+  },
   "scripts": {
     "start": "node server.mjs",
-    "check": "node --check server.mjs && node --check public/app.js"
+    "desktop": "node desktop/launch.cjs",
+    "check": "node --check server.mjs && node --check public/app.js && node --check desktop/main.mjs && node --check desktop/preload.cjs && node --check desktop/launch.cjs",
+    "pack:linux": "electron-builder --linux AppImage deb",
+    "pack:windows": "electron-builder --win nsis",
+    "pack:windows:portable": "electron-builder --win zip"
   },
   "engines": {
     "node": ">=18.17"
+  },
+  "devDependencies": {
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.promptde.desktop",
+    "productName": "PromptDe",
+    "asar": true,
+    "files": [
+      "desktop/**/*",
+      "public/**/*",
+      "server.mjs",
+      "package.json"
+    ],
+    "linux": {
+      "category": "Utility",
+      "icon": "assets/icon.png",
+      "maintainer": "PromptDe Contributors <support@promptde.local>",
+      "syncDesktopName": true,
+      "target": ["AppImage", "deb"]
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

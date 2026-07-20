@@ -137,7 +137,10 @@ function createTray() {
 }
 
 if (process.platform === "linux") {
-  // Match promptde.desktop so GNOME associates the window with PromptDe's icon.
+  // Match promptde.desktop even when PromptDe is started from an IDE or terminal.
+  // Chromium's explicit class switch prevents the parent application's startup
+  // identity from being inherited by the native window on X11.
+  app.commandLine.appendSwitch("class", LINUX_DESKTOP_NAME);
   app.setDesktopName(LINUX_DESKTOP_NAME);
 }
 

@@ -2,6 +2,32 @@
 unset ELECTRON_RUN_AS_NODE
 unset ELECTRON_NO_ATTACH_CONSOLE
 
+# VS Code's Snap package exports private GTK/GIO paths to every integrated
+# terminal. Native desktop apps must not load those Snap-specific libraries.
+unset GIO_MODULE_DIR
+unset GTK_EXE_PREFIX
+unset GTK_IM_MODULE_FILE
+unset GTK_PATH
+unset SNAP
+unset SNAP_ARCH
+unset SNAP_COMMON
+unset SNAP_CONTEXT
+unset SNAP_COOKIE
+unset SNAP_DATA
+unset SNAP_EUID
+unset SNAP_INSTANCE_KEY
+unset SNAP_INSTANCE_NAME
+unset SNAP_LAUNCHER_ARCH_TRIPLET
+unset SNAP_LIBRARY_PATH
+unset SNAP_NAME
+unset SNAP_REAL_HOME
+unset SNAP_REEXEC
+unset SNAP_REVISION
+unset SNAP_UID
+unset SNAP_USER_COMMON
+unset SNAP_USER_DATA
+unset SNAP_VERSION
+
 # Do not let a terminal or editor claim PromptDe's window as its own.
 case "${GIO_LAUNCHED_DESKTOP_FILE:-}" in
   *promptde.desktop) ;;
@@ -12,4 +38,4 @@ case "${GIO_LAUNCHED_DESKTOP_FILE:-}" in
     ;;
 esac
 
-exec "/home/fiftyfive/.local/opt/promptde/promptde" "$@"
+exec "/home/fiftyfive/.local/opt/promptde/promptde" --class=promptde "$@"

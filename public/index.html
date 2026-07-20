@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Turn Hindi, English, or Hinglish speech into precise prompts for coding agents." />
+    <title>BolPrompt — Speak naturally. Build precisely.</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="BolPrompt home">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span>
+        </span>
+        <span>BolPrompt</span>
+      </a>
+      <div class="top-actions">
+        <span class="privacy-pill"><span class="status-dot"></span> Keys stay local</span>
+        <button class="icon-button" id="settingsButton" type="button" aria-label="Open settings" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.16.38.37.72.6 1 .3.36.7.57 1.1.6h.09v4h-.09a1.7 1.7 0 0 0-1.7.4Z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow"><span>हिंदी</span><i></i><span>English</span><i></i><span>Hinglish</span></div>
+        <h1>Speak naturally.<br /><span>Build precisely.</span></h1>
+        <p>Turn rough ideas into clear, context-efficient prompts your coding agent can act on.</p>
+      </section>
+
+      <section class="workspace" aria-label="Prompt workspace">
+        <div class="panel input-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="step">01</span>
+              <h2>Your idea</h2>
+            </div>
+            <select id="language" aria-label="Spoken language">
+              <option value="auto">Auto detect</option>
+              <option value="hi">Hindi / Hinglish</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+
+          <div class="recorder" id="recorder">
+            <button class="record-button" id="recordButton" type="button" aria-label="Start recording">
+              <span class="record-icon"></span>
+              <span class="record-ripple"></span>
+            </button>
+            <div class="record-copy">
+              <strong id="recordTitle">Tap to speak</strong>
+              <span id="recordHint">Your natural words are perfect</span>
+            </div>
+            <div class="timer" id="timer">00:00</div>
+          </div>
+
+          <div class="divider"><span>or type / edit the transcript</span></div>
+
+          <label class="field-label" for="transcript">Transcript</label>
+          <textarea id="transcript" rows="8" placeholder="Example: Login page mein forgot password add karna hai. Existing design use karo, email par reset link jaana chahiye..."></textarea>
+          <div class="field-meta">
+            <span id="transcriptCount">0 words</span>
+            <button class="text-button" id="clearTranscript" type="button">Clear</button>
+          </div>
+
+          <details class="context-details">
+            <summary>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h6l2 2h8v9H4v-11Z"/></svg> Add project context</span>
+              <small>Optional</small>
+            </summary>
+            <label class="sr-only" for="context">Project context</label>
+            <textarea id="context" rows="5" placeholder="Paste relevant stack details, file paths, conventions, constraints, or a short code excerpt. Avoid pasting the whole repository."></textarea>
+          </details>
+        </div>
+
+        <div class="flow-arrow" aria-hidden="true">
+          <svg viewBox="0 0 44 44"><path d="M9 22h24M26 15l7 7-7 7"/></svg>
+        </div>
+
+        <div class="panel output-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="step">02</span>
+              <h2>Agent prompt</h2>
+            </div>
+            <div class="mode-switch" role="group" aria-label="Prompt detail">
+              <button data-mode="quick" type="button">Quick</button>
+              <button class="active" data-mode="standard" type="button">Standard</button>
+              <button data-mode="detailed" type="button">Detailed</button>
+            </div>
+          </div>
+
+          <div class="empty-output" id="emptyOutput">
+            <div class="prompt-glyph" aria-hidden="true"><span>⌘</span></div>
+            <h3>Your precise prompt will appear here</h3>
+            <p>Record or type your idea, then compile it into a task your coding agent can execute.</p>
+          </div>
+
+          <div class="result hidden" id="result">
+            <div class="result-header">
+              <span class="result-badge" id="resultBadge">Ready for agent</span>
+              <span id="resultTitle">Compiled prompt</span>
+            </div>
+            <label class="sr-only" for="agentPrompt">Compiled agent prompt</label>
+            <textarea id="agentPrompt" rows="16"></textarea>
+            <div class="result-insights" id="resultInsights"></div>
+            <div class="result-notes hidden" id="resultNotes"></div>
+          </div>
+
+          <div class="output-footer">
+            <div class="token-estimate">
+              <span id="tokenCount">≈ 0 tokens</span>
+              <small>Estimate only</small>
+            </div>
+            <button class="copy-button" id="copyButton" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8h10v12H9z"/><path d="M5 16H4V4h10v1"/></svg>
+              Copy prompt
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <button class="compile-button" id="compileButton" type="button">
+        <span>Compile my prompt</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 4-1 6h6l-8 10 1-7H6l7-9Z"/></svg>
+      </button>
+      <p class="shortcut">Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to compile</p>
+    </main>
+
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <aside class="settings-drawer" id="settingsDrawer" aria-label="Provider settings" aria-hidden="true">
+      <div class="drawer-heading">
+        <div>
+          <span class="eyebrow-small">Configuration</span>
+          <h2>Provider settings</h2>
+        </div>
+        <button class="icon-button" id="closeSettings" type="button" aria-label="Close settings">×</button>
+      </div>
+
+      <div class="security-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2M5 10h14v11H5z"/></svg>
+        <p><strong>Server-side keys</strong><br />Provider keys are loaded from <code>.env</code> and are never exposed to this page.</p>
+      </div>
+
+      <section class="settings-section">
+        <div class="settings-title"><span>Speech-to-text</span><span class="provider-tag">Groq</span></div>
+        <div class="config-status" id="groqStatus"><span></span> Checking Groq configuration…</div>
+        <label for="speechModel">Transcription model</label>
+        <select id="speechModel">
+          <option value="whisper-large-v3">Whisper Large V3 — Accuracy</option>
+          <option value="whisper-large-v3-turbo">Whisper Large V3 Turbo — Speed</option>
+        </select>
+      </section>
+
+      <section class="settings-section">
+        <div class="settings-title"><span>Prompt compiler</span></div>
+        <div class="provider-choice" role="group" aria-label="Prompt provider">
+          <button data-provider="gemini" type="button">Gemini</button>
+          <button class="active" data-provider="groq" type="button">Groq · Recommended</button>
+        </div>
+        <div class="config-status" id="compilerStatus"><span></span> Checking compiler configuration…</div>
+        <div class="hidden" id="geminiSettings">
+          <label for="geminiModel">Gemini model</label>
+          <input id="geminiModel" type="text" value="gemini-3.5-flash" spellcheck="false" />
+        </div>
+        <div id="groqCompilerSettings">
+          <p class="reuse-note">Uses the Groq key entered above.</p>
+          <label for="groqModel">Groq model</label>
+          <select id="groqModel">
+            <option value="openai/gpt-oss-120b">GPT-OSS 120B — Quality</option>
+            <option value="openai/gpt-oss-20b">GPT-OSS 20B — Speed</option>
+          </select>
+        </div>
+      </section>
+
+      <button class="save-settings" id="saveSettings" type="button">Use these settings</button>
+      <p class="free-tier-note">Keys are read from <code>.env</code> when the server starts. Restart the server after changing that file.</p>
+    </aside>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

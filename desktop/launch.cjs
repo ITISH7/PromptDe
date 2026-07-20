@@ -4,6 +4,9 @@ const electronPath = require("electron");
 
 const cleanEnvironment = { ...process.env };
 delete cleanEnvironment.ELECTRON_RUN_AS_NODE;
+delete cleanEnvironment.DESKTOP_STARTUP_ID;
+delete cleanEnvironment.GIO_LAUNCHED_DESKTOP_FILE;
+delete cleanEnvironment.GIO_LAUNCHED_DESKTOP_FILE_PID;
 
 const child = spawn(electronPath, [join(__dirname, "..")], {
   env: cleanEnvironment,

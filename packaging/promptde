@@ -1,4 +1,15 @@
 #!/bin/sh
 unset ELECTRON_RUN_AS_NODE
 unset ELECTRON_NO_ATTACH_CONSOLE
+
+# Do not let a terminal or editor claim PromptDe's window as its own.
+case "${GIO_LAUNCHED_DESKTOP_FILE:-}" in
+  *promptde.desktop) ;;
+  *)
+    unset DESKTOP_STARTUP_ID
+    unset GIO_LAUNCHED_DESKTOP_FILE
+    unset GIO_LAUNCHED_DESKTOP_FILE_PID
+    ;;
+esac
+
 exec "/home/fiftyfive/.local/opt/promptde/promptde" "$@"

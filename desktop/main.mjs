@@ -27,12 +27,17 @@ let TRANSLATE_PASTE_SHORTCUT;
 let QUICK_PROMPT_PASTE_SHORTCUT;
 let STANDARD_PROMPT_PASTE_SHORTCUT;
 let DETAILED_PROMPT_PASTE_SHORTCUT;
-const ENV_TEMPLATE = `# PromptDe desktop configuration\n# Restart PromptDe after changing this file.\n\nGROQ_API_KEY=\nGEMINI_API_KEY=\n\n# Optional shortcut overrides\n# PROMPTDE_TRANSLATE_PASTE_SHORTCUT=CommandOrControl+F9\n# PROMPTDE_QUICK_PROMPT_PASTE_SHORTCUT=Shift+F1\n# PROMPTDE_STANDARD_PROMPT_PASTE_SHORTCUT=Shift+F2\n# PROMPTDE_DETAILED_PROMPT_PASTE_SHORTCUT=Shift+F3\n`;
+let SELECTED_TRANSLATE_SHORTCUT;
+let SELECTED_QUICK_PROMPT_SHORTCUT;
+let SELECTED_STANDARD_PROMPT_SHORTCUT;
+let SELECTED_DETAILED_PROMPT_SHORTCUT;
+const ENV_TEMPLATE = `# PromptDe desktop configuration\n# Restart PromptDe after changing this file.\n\nGROQ_API_KEY=\nGEMINI_API_KEY=\n\n# Optional shortcut overrides\n# PROMPTDE_TRANSLATE_PASTE_SHORTCUT=CommandOrControl+F9\n# PROMPTDE_QUICK_PROMPT_PASTE_SHORTCUT=Shift+F1\n# PROMPTDE_STANDARD_PROMPT_PASTE_SHORTCUT=Shift+F2\n# PROMPTDE_DETAILED_PROMPT_PASTE_SHORTCUT=Shift+F3\n# PROMPTDE_SELECTED_TRANSLATE_SHORTCUT=CommandOrControl+Shift+F5\n# PROMPTDE_SELECTED_QUICK_PROMPT_SHORTCUT=CommandOrControl+Shift+F6\n# PROMPTDE_SELECTED_STANDARD_PROMPT_SHORTCUT=CommandOrControl+Shift+F7\n# PROMPTDE_SELECTED_DETAILED_PROMPT_SHORTCUT=CommandOrControl+Shift+F8\n`;
 
 let mainWindow;
 let tray;
 let localServer;
 let isQuitting = false;
+let selectedRewriteBusy = false;
 
 function loadShortcutConfig() {
   SHORTCUT = process.env.PROMPTDE_SHORTCUT || process.env.BOLPROMPT_SHORTCUT || "CommandOrControl+Shift+Space";
@@ -44,6 +49,10 @@ function loadShortcutConfig() {
   QUICK_PROMPT_PASTE_SHORTCUT = process.env.PROMPTDE_QUICK_PROMPT_PASTE_SHORTCUT || "Shift+F1";
   STANDARD_PROMPT_PASTE_SHORTCUT = process.env.PROMPTDE_STANDARD_PROMPT_PASTE_SHORTCUT || "Shift+F2";
   DETAILED_PROMPT_PASTE_SHORTCUT = process.env.PROMPTDE_DETAILED_PROMPT_PASTE_SHORTCUT || "Shift+F3";
+  SELECTED_TRANSLATE_SHORTCUT = process.env.PROMPTDE_SELECTED_TRANSLATE_SHORTCUT || "CommandOrControl+Shift+F5";
+  SELECTED_QUICK_PROMPT_SHORTCUT = process.env.PROMPTDE_SELECTED_QUICK_PROMPT_SHORTCUT || "CommandOrControl+Shift+F6";
+  SELECTED_STANDARD_PROMPT_SHORTCUT = process.env.PROMPTDE_SELECTED_STANDARD_PROMPT_SHORTCUT || "CommandOrControl+Shift+F7";
+  SELECTED_DETAILED_PROMPT_SHORTCUT = process.env.PROMPTDE_SELECTED_DETAILED_PROMPT_SHORTCUT || "CommandOrControl+Shift+F8";
 }
 
 loadShortcutConfig();
@@ -59,6 +68,82 @@ function runCommand(command, args) {
 
 function notifyDesktop(body) {
   if (Notification.isSupported()) new Notification({ title: "PromptDe", body }).show();
+}
+
+function clipboardSnapshot() {
+  return clipboard.availableFormats().map((format) => [format, clipboard.readBuffer(format)]);
+}
+
+function restoreClipboard(snapshot) {
+  clipboard.clear();
+  for (const [format, contents] of snapshot) clipboard.writeBuffer(format, contents);
+}
+
+async function copyCurrentSelection() {
+  const previousClipboard = clipboardSnapshot();
+  const marker = `promptde-no-selection-${Date.now()}-${Math.random()}`;
+  clipboard.writeText(marker);
+
+  try {
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 120));
+    if (process.platform === "win32") {
+      await runCommand("powershell.exe", [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^c')",
+      ]);
+    } else if (process.platform === "darwin") {
+      await runCommand("osascript", [
+        "-e",
+        "tell application \"System Events\" to keystroke \"c\" using command down",
+      ]);
+    } else {
+      let copyChord = "ctrl+c";
+      try {
+        const windowId = (await runCommand("xdotool", ["getactivewindow"])).trim();
+        const windowClass = await runCommand("xprop", ["-id", windowId, "WM_CLASS"]);
+        if (/terminal|kitty|alacritty|konsole|xterm|tilix|terminator|wezterm|ptyxis|urxvt/iu.test(windowClass)) {
+          copyChord = "ctrl+shift+c";
+        }
+      } catch {
+        // Use the standard copy chord when window classification is unavailable.
+      }
+      try {
+        await runCommand("xdotool", ["key", "--clearmodifiers", copyChord]);
+      } catch {
+        const modifiers = copyChord.includes("shift") ? ["-M", "ctrl", "-M", "shift"] : ["-M", "ctrl"];
+        const releasedModifiers = copyChord.includes("shift") ? ["-m", "shift", "-m", "ctrl"] : ["-m", "ctrl"];
+        await runCommand("wtype", [...modifiers, "-k", "c", ...releasedModifiers]);
+      }
+    }
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 180));
+    const selectedText = clipboard.readText();
+    if (!selectedText.trim() || selectedText === marker) {
+      restoreClipboard(previousClipboard);
+      throw new Error("Select some text before using this shortcut.");
+    }
+    return selectedText;
+  } catch (error) {
+    if (clipboard.readText() === marker) restoreClipboard(previousClipboard);
+    throw error;
+  }
+}
+
+async function rewriteCurrentSelection(mode) {
+  if (selectedRewriteBusy) {
+    notifyDesktop("PromptDe is already rewriting selected text.");
+    return;
+  }
+  selectedRewriteBusy = true;
+  try {
+    const text = await copyCurrentSelection();
+    notifyDesktop(mode === "translate" ? "Translating selected text…" : `Creating a ${mode} prompt…`);
+    mainWindow?.webContents.send("promptde:rewrite-selection", { mode, text });
+  } catch (error) {
+    selectedRewriteBusy = false;
+    notifyDesktop(error.message || "Could not read the selected text.");
+  }
 }
 
 async function pasteClipboardText(rawText) {
@@ -258,12 +343,17 @@ if (!hasLock) {
       quickPromptPasteShortcut: QUICK_PROMPT_PASTE_SHORTCUT,
       standardPromptPasteShortcut: STANDARD_PROMPT_PASTE_SHORTCUT,
       detailedPromptPasteShortcut: DETAILED_PROMPT_PASTE_SHORTCUT,
+      selectedTranslateShortcut: SELECTED_TRANSLATE_SHORTCUT,
+      selectedQuickPromptShortcut: SELECTED_QUICK_PROMPT_SHORTCUT,
+      selectedStandardPromptShortcut: SELECTED_STANDARD_PROMPT_SHORTCUT,
+      selectedDetailedPromptShortcut: SELECTED_DETAILED_PROMPT_SHORTCUT,
       configDir,
       envPath,
     }));
     ipcMain.handle("promptde:open-config-folder", () => shell.openPath(configDir));
     ipcMain.handle("promptde:save-api-keys", (_event, keys) => saveDesktopApiKeys(envPath, keys));
     ipcMain.handle("promptde:paste-text", (_event, text) => pasteClipboardText(text));
+    ipcMain.on("promptde:selection-rewrite-finished", () => { selectedRewriteBusy = false; });
     ipcMain.on("promptde:notify", (_event, message) => notifyDesktop(String(message).slice(0, 300)));
     ipcMain.on("promptde:show", showWindow);
 
@@ -299,6 +389,16 @@ if (!hasLock) {
         mainWindow?.webContents.send("promptde:prompt-paste", mode);
       })) {
         console.error(`Could not register ${mode} prompt-and-paste shortcut: ${shortcut}`);
+      }
+    }
+    for (const [shortcut, mode] of [
+      [SELECTED_TRANSLATE_SHORTCUT, "translate"],
+      [SELECTED_QUICK_PROMPT_SHORTCUT, "quick"],
+      [SELECTED_STANDARD_PROMPT_SHORTCUT, "standard"],
+      [SELECTED_DETAILED_PROMPT_SHORTCUT, "detailed"],
+    ]) {
+      if (!globalShortcut.register(shortcut, () => rewriteCurrentSelection(mode))) {
+        console.error(`Could not register selected-text ${mode} shortcut: ${shortcut}`);
       }
     }
   }).catch((error) => {

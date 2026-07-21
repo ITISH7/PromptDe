@@ -7,6 +7,8 @@ PromptDe turns spoken or typed Hindi, English, and Hinglish ideas into structure
 - Transcribes microphone recordings with Groq Whisper.
 - Compiles transcripts with Gemini or Groq into concise, structured prompts.
 - Translates speech into natural, formal, or informal English/Hindi and pastes it at the active cursor.
+- Translates text selected in any application to English and replaces it in place.
+- Converts selected text into Quick, Standard, or Detailed prompts and replaces it in place.
 - Supports Quick, Standard, and Detailed output modes.
 - Accepts optional project context and produces a separate English interpretation.
 - Copies the generated prompt to the clipboard.
@@ -72,6 +74,10 @@ PromptDe supports two ways to provide API keys.
    PROMPTDE_QUICK_PROMPT_PASTE_SHORTCUT=Shift+F1
    PROMPTDE_STANDARD_PROMPT_PASTE_SHORTCUT=Shift+F2
    PROMPTDE_DETAILED_PROMPT_PASTE_SHORTCUT=Shift+F3
+   PROMPTDE_SELECTED_TRANSLATE_SHORTCUT=CommandOrControl+Shift+F5
+   PROMPTDE_SELECTED_QUICK_PROMPT_SHORTCUT=CommandOrControl+Shift+F6
+   PROMPTDE_SELECTED_STANDARD_PROMPT_SHORTCUT=CommandOrControl+Shift+F7
+   PROMPTDE_SELECTED_DETAILED_PROMPT_SHORTCUT=CommandOrControl+Shift+F8
    ```
 
 `GROQ_API_KEY` is required for recording. `GEMINI_API_KEY` is required only when Gemini is selected for compilation or translation. `PORT` is optional and defaults to `4173` for the web server. The `PROMPTDE_*_SHORTCUT` values optionally change the corresponding desktop shortcuts. If both provider keys are present, PromptDe can fail over to the other provider after a temporary compiler error.
@@ -122,12 +128,18 @@ Global shortcuts while the desktop application is running:
 | Record a quick prompt and paste | `Shift+F1` | `Shift+F1` |
 | Record a standard prompt and paste | `Shift+F2` | `Shift+F2` |
 | Record a detailed prompt and paste | `Shift+F3` | `Shift+F3` |
+| Translate selected text to English | `Ctrl+Shift+F5` | `Cmd+Shift+F5` |
+| Convert selected text to a quick prompt | `Ctrl+Shift+F6` | `Cmd+Shift+F6` |
+| Convert selected text to a standard prompt | `Ctrl+Shift+F7` | `Cmd+Shift+F7` |
+| Convert selected text to a detailed prompt | `Ctrl+Shift+F8` | `Cmd+Shift+F8` |
 
 Press the recording shortcut a second time to stop recording and continue the workflow.
 
 For prompt-and-paste mode, place the cursor in another application and press `Shift+F1`, `Shift+F2`, or `Shift+F3`. Press the same shortcut again after speaking. PromptDe transcribes the new recording, compiles it at the selected detail level, and pastes the generated prompt at the active cursor.
 
 For translation mode, choose the target language and conversation style under **Settings → Translate & paste**. Place the cursor in another application, press the shortcut once, speak, and press it again. PromptDe translates the recording and pastes the result without opening its window. If automatic paste is unavailable, the translation remains on the clipboard so it can be pasted manually.
+
+For selected-text actions, highlight text in any editable application and press `Ctrl+Shift+F5`, `Ctrl+Shift+F6`, `Ctrl+Shift+F7`, or `Ctrl+Shift+F8`. PromptDe copies the selection, processes it in the background, and pastes the result over the highlighted text. Translation always targets natural English; the other three shortcuts choose the prompt detail level. On macOS, use `Cmd` instead of `Ctrl`.
 
 ## Linting and tests
 

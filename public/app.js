@@ -645,6 +645,72 @@ async function togglePromptPaste(mode) {
   await startRecording("promptPaste");
 }
 
+async function rewriteSelectedText(payload = {}) {
+  const mode = payload.mode;
+  const transcript = typeof payload.text === "string" ? payload.text.trim() : "";
+  if (!window.promptDeDesktop || !["translate", "quick", "standard", "detailed"].includes(mode)) return;
+
+  if (state.busy) {
+    desktopNotify("PromptDe is still processing the previous request.");
+    window.promptDeDesktop.finishSelectionRewrite();
+    return;
+  }
+  if (!transcript) {
+    desktopNotify("Select some text before using this shortcut.");
+    window.promptDeDesktop.finishSelectionRewrite();
+    return;
+  }
+  if (!providerReady(state.compilerProvider)) {
+    const availableProvider = providerReady("gemini") ? "gemini" : providerReady("groq") ? "groq" : null;
+    if (availableProvider) setCompilerProvider(availableProvider);
+    else {
+      desktopNotify("Add a Gemini or Groq key before rewriting selected text.");
+      window.promptDeDesktop.show();
+      openSettings();
+      window.promptDeDesktop.finishSelectionRewrite();
+      return;
+    }
+  }
+
+  state.busy = true;
+  try {
+    const config = compilerConfig();
+    const isTranslation = mode === "translate";
+    const response = await fetch(isTranslation ? "/api/translate" : "/api/compile", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...requestKeyHeaders() },
+      body: JSON.stringify(isTranslation ? {
+        provider: state.compilerProvider,
+        model: config.model,
+        transcript,
+        targetLanguage: "english",
+        tone: "natural",
+      } : {
+        provider: state.compilerProvider,
+        model: config.model,
+        mode,
+        transcript,
+        context: "",
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || (isTranslation ? "Translation failed." : "Prompt compilation failed."));
+    }
+
+    const replacement = isTranslation ? data.translation : data.agentPrompt;
+    if (!replacement?.trim()) throw new Error("The provider returned an empty result.");
+    const pasteResult = await window.promptDeDesktop.pasteText(replacement);
+    const label = isTranslation ? "English translation" : `${mode[0].toUpperCase()}${mode.slice(1)} prompt`;
+    desktopNotify(pasteResult.pasted ? `${label} replaced the selected text.` : pasteResult.message);
+  } catch (error) {
+    desktopNotify(error.message || "Could not rewrite the selected text.");
+  } finally {
+    state.busy = false;
+    window.promptDeDesktop.finishSelectionRewrite();
+  }
+}
+
 async function saveProviderSettings() {
   const groqKey = elements.groqApiKey.value.trim();
   const geminiKey = elements.geminiApiKey.value.trim();
@@ -781,4 +847,5 @@ if (window.promptDeDesktop) {
   window.promptDeDesktop.onCopyPrompt(copyPrompt);
   window.promptDeDesktop.onTranslatePaste(toggleTranslationPaste);
   window.promptDeDesktop.onPromptPaste(togglePromptPaste);
+  window.promptDeDesktop.onRewriteSelection(rewriteSelectedText);
 }

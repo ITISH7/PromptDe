@@ -42,4 +42,10 @@ contextBridge.exposeInMainWorld("promptDeDesktop", {
     ipcRenderer.on("promptde:prompt-paste", handler);
     return () => ipcRenderer.removeListener("promptde:prompt-paste", handler);
   },
+  onRewriteSelection: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("promptde:rewrite-selection", handler);
+    return () => ipcRenderer.removeListener("promptde:rewrite-selection", handler);
+  },
+  finishSelectionRewrite: () => ipcRenderer.send("promptde:selection-rewrite-finished"),
 });

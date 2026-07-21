@@ -37,4 +37,9 @@ contextBridge.exposeInMainWorld("promptDeDesktop", {
     ipcRenderer.on("promptde:translate-paste", handler);
     return () => ipcRenderer.removeListener("promptde:translate-paste", handler);
   },
+  onPromptPaste: (callback) => {
+    const handler = (_event, mode) => callback(mode);
+    ipcRenderer.on("promptde:prompt-paste", handler);
+    return () => ipcRenderer.removeListener("promptde:prompt-paste", handler);
+  },
 });

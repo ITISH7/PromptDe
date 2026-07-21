@@ -61,6 +61,7 @@ const state = {
   userKeys: { groq: "", gemini: "" },
   desktopAutoCompile: false,
   recordingTarget: "transcript",
+  promptPasteMode: null,
 };
 
 let toastTimeout;
@@ -191,10 +192,12 @@ function resetRecorderUi() {
 
 async function startRecording(target = "transcript") {
   if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    if (target === "promptPaste") state.promptPasteMode = null;
     showToast("This browser does not support microphone recording. You can still type a transcript.", "error");
     return;
   }
   if (!providerReady("groq")) {
+    if (target === "promptPaste") state.promptPasteMode = null;
     showToast("Add your Groq API key in Settings first.", "error");
     openSettings();
     return;
@@ -215,12 +218,14 @@ async function startRecording(target = "transcript") {
     elements.recorder.classList.add("recording");
     elements.recordTitle.textContent = target === "context"
       ? "Listening for project context…"
-      : target === "translatePaste" ? "Listening for translation…" : "Listening… tap to stop";
-    elements.recordHint.textContent = ["context", "translatePaste"].includes(target)
+      : target === "translatePaste" ? "Listening for translation…"
+        : target === "promptPaste" ? `Listening for ${state.promptPasteMode} prompt…` : "Listening… tap to stop";
+    elements.recordHint.textContent = ["context", "translatePaste", "promptPaste"].includes(target)
       ? "Press the shortcut again to stop"
       : "Speak in Hindi, English, or Hinglish";
     elements.recordButton.setAttribute("aria-label", "Stop recording");
     if (target === "translatePaste") desktopNotify("Recording translation. Press the shortcut again to stop.");
+    if (target === "promptPaste") desktopNotify(`Recording ${state.promptPasteMode} prompt. Press the shortcut again to stop.`);
     state.timerId = setInterval(() => {
       const elapsed = (Date.now() - state.startedAt) / 1000;
       elements.timer.textContent = formatTimer(elapsed);
@@ -228,9 +233,10 @@ async function startRecording(target = "transcript") {
     }, 250);
   } catch (error) {
     state.recordingTarget = "transcript";
+    if (target === "promptPaste") state.promptPasteMode = null;
     const message = error.name === "NotAllowedError" ? "Microphone permission was denied." : `Could not start the microphone: ${error.message}`;
     showToast(message, "error");
-    if (target === "translatePaste") desktopNotify(message);
+    if (["translatePaste", "promptPaste"].includes(target)) desktopNotify(message);
   }
 }
 
@@ -246,6 +252,7 @@ function stopRecording() {
 
 async function transcribeRecording() {
   const recordingTarget = state.recordingTarget;
+  const promptPasteMode = state.promptPasteMode;
   const mimeType = state.mediaRecorder?.mimeType || "audio/webm";
   const extension = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
   const audio = new Blob(state.audioChunks, { type: mimeType });
@@ -256,7 +263,8 @@ async function transcribeRecording() {
     state.recordingTarget = "transcript";
     resetRecorderUi();
     showToast("The recording was too short. Please try again.", "error");
-    if (recordingTarget === "translatePaste") desktopNotify("The recording was too short. Please try again.");
+    state.promptPasteMode = null;
+    if (["translatePaste", "promptPaste"].includes(recordingTarget)) desktopNotify("The recording was too short. Please try again.");
     return;
   }
 
@@ -284,7 +292,9 @@ async function transcribeRecording() {
     } else {
       const destination = recordingTarget === "context" ? elements.context : elements.transcript;
       const existing = destination.value.trim();
-      destination.value = [existing, data.text.trim()].filter(Boolean).join(existing ? "\n" : "");
+      destination.value = recordingTarget === "promptPaste"
+        ? data.text.trim()
+        : [existing, data.text.trim()].filter(Boolean).join(existing ? "\n" : "");
       if (recordingTarget === "context") {
         elements.contextDetails.open = true;
         destination.focus();
@@ -292,7 +302,7 @@ async function transcribeRecording() {
         updateWordCount();
       }
     }
-    shouldAutoCompile = recordingTarget === "transcript" && state.desktopAutoCompile;
+    shouldAutoCompile = recordingTarget === "promptPaste" || (recordingTarget === "transcript" && state.desktopAutoCompile);
     state.desktopAutoCompile = false;
     if (recordingTarget !== "translatePaste") {
       showToast(recordingTarget === "context"
@@ -302,12 +312,13 @@ async function transcribeRecording() {
   } catch (error) {
     state.desktopAutoCompile = false;
     showToast(error.message, "error");
-    if (recordingTarget === "translatePaste") desktopNotify(error.message);
+    if (["translatePaste", "promptPaste"].includes(recordingTarget)) desktopNotify(error.message);
   } finally {
     state.recordingTarget = "transcript";
+    state.promptPasteMode = null;
     resetRecorderUi();
   }
-  if (shouldAutoCompile) await compilePrompt();
+  if (shouldAutoCompile) await compilePrompt({ mode: promptPasteMode || state.promptMode, autoPaste: recordingTarget === "promptPaste" });
   if (translationTranscript) await translateText(translationTranscript, true);
 }
 
@@ -358,7 +369,7 @@ function renderInsights(data) {
   elements.resultNotes.classList.toggle("hidden", noteGroups.length === 0);
 }
 
-async function compilePrompt() {
+async function compilePrompt({ mode = state.promptMode, autoPaste = false } = {}) {
   if (state.busy) return;
   const transcript = elements.transcript.value.trim();
   if (!transcript) {
@@ -384,7 +395,7 @@ async function compilePrompt() {
       body: JSON.stringify({
         provider: state.compilerProvider,
         model: config.model,
-        mode: state.promptMode,
+        mode,
         transcript,
         context: elements.context.value,
       }),
@@ -404,11 +415,19 @@ async function compilePrompt() {
     elements.result.classList.remove("hidden");
     renderInsights(data);
     updateTokenEstimate();
+    if (autoPaste && window.promptDeDesktop) {
+      const pasteResult = await window.promptDeDesktop.pasteText(data.agentPrompt);
+      const message = pasteResult.pasted ? `${mode[0].toUpperCase()}${mode.slice(1)} prompt pasted.` : pasteResult.message;
+      desktopNotify(message);
+      showToast(message, pasteResult.pasted ? "success" : "error");
+      return;
+    }
     showToast(data.fallbackFrom
       ? `${data.fallbackFrom === "gemini" ? "Gemini" : "Groq"} was busy, so ${usedProvider === "gemini" ? "Gemini" : "Groq"} completed your prompt automatically.`
       : "Your agent-ready prompt is complete.");
   } catch (error) {
     showToast(error.message, "error");
+    if (autoPaste) desktopNotify(error.message);
   } finally {
     state.busy = false;
     elements.compileButton.disabled = false;
@@ -591,6 +610,41 @@ async function toggleTranslationPaste() {
   await startRecording("translatePaste");
 }
 
+async function togglePromptPaste(mode) {
+  if (!["quick", "standard", "detailed"].includes(mode)) return;
+  if (state.mediaRecorder?.state === "recording") {
+    if (state.recordingTarget !== "promptPaste" || state.promptPasteMode !== mode) {
+      desktopNotify("Finish the current recording with the same shortcut before starting another mode.");
+      return;
+    }
+    desktopNotify("Recording stopped. Creating your prompt…");
+    stopRecording();
+    return;
+  }
+  if (state.busy) {
+    desktopNotify("PromptDe is still processing the previous request.");
+    return;
+  }
+  if (!providerReady("groq")) {
+    desktopNotify("Add a Groq API key before using voice prompt shortcuts.");
+    window.promptDeDesktop?.show();
+    openSettings();
+    return;
+  }
+  if (!providerReady(state.compilerProvider)) {
+    const availableProvider = providerReady("gemini") ? "gemini" : providerReady("groq") ? "groq" : null;
+    if (availableProvider) setCompilerProvider(availableProvider);
+    else {
+      desktopNotify("Add a Gemini or Groq compiler key before using voice prompt shortcuts.");
+      window.promptDeDesktop?.show();
+      openSettings();
+      return;
+    }
+  }
+  state.promptPasteMode = mode;
+  await startRecording("promptPaste");
+}
+
 async function saveProviderSettings() {
   const groqKey = elements.groqApiKey.value.trim();
   const geminiKey = elements.geminiApiKey.value.trim();
@@ -726,4 +780,5 @@ if (window.promptDeDesktop) {
   window.promptDeDesktop.onCopyTranslation(copyTranslation);
   window.promptDeDesktop.onCopyPrompt(copyPrompt);
   window.promptDeDesktop.onTranslatePaste(toggleTranslationPaste);
+  window.promptDeDesktop.onPromptPaste(togglePromptPaste);
 }

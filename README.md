@@ -69,9 +69,12 @@ PromptDe supports two ways to provide API keys.
    GEMINI_API_KEY=your_gemini_api_key_here
    PORT=4173
    PROMPTDE_TRANSLATE_PASTE_SHORTCUT=CommandOrControl+F9
+   PROMPTDE_QUICK_PROMPT_PASTE_SHORTCUT=Shift+F1
+   PROMPTDE_STANDARD_PROMPT_PASTE_SHORTCUT=Shift+F2
+   PROMPTDE_DETAILED_PROMPT_PASTE_SHORTCUT=Shift+F3
    ```
 
-`GROQ_API_KEY` is required for recording. `GEMINI_API_KEY` is required only when Gemini is selected for compilation or translation. `PORT` is optional and defaults to `4173` for the web server. `PROMPTDE_TRANSLATE_PASTE_SHORTCUT` optionally changes the desktop translation shortcut. If both provider keys are present, PromptDe can fail over to the other provider after a temporary compiler error.
+`GROQ_API_KEY` is required for recording. `GEMINI_API_KEY` is required only when Gemini is selected for compilation or translation. `PORT` is optional and defaults to `4173` for the web server. The `PROMPTDE_*_SHORTCUT` values optionally change the corresponding desktop shortcuts. If both provider keys are present, PromptDe can fail over to the other provider after a temporary compiler error.
 
 The repository ignores `.env`; never commit real credentials.
 
@@ -116,8 +119,13 @@ Global shortcuts while the desktop application is running:
 | Copy the English translation | `Ctrl+Alt+E` | `Cmd+Option+E` |
 | Copy the compiled prompt | `Ctrl+Alt+P` | `Cmd+Option+P` |
 | Record, translate, and paste | `Ctrl+F9` | `Cmd+F9` |
+| Record a quick prompt and paste | `Shift+F1` | `Shift+F1` |
+| Record a standard prompt and paste | `Shift+F2` | `Shift+F2` |
+| Record a detailed prompt and paste | `Shift+F3` | `Shift+F3` |
 
 Press the recording shortcut a second time to stop recording and continue the workflow.
+
+For prompt-and-paste mode, place the cursor in another application and press `Shift+F1`, `Shift+F2`, or `Shift+F3`. Press the same shortcut again after speaking. PromptDe transcribes the new recording, compiles it at the selected detail level, and pastes the generated prompt at the active cursor.
 
 For translation mode, choose the target language and conversation style under **Settings → Translate & paste**. Place the cursor in another application, press the shortcut once, speak, and press it again. PromptDe translates the recording and pastes the result without opening its window. If automatic paste is unavailable, the translation remains on the clipboard so it can be pasted manually.
 

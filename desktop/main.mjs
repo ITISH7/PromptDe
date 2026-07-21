@@ -25,7 +25,10 @@ let CONTEXT_SHORTCUT;
 let COPY_TRANSLATION_SHORTCUT;
 let COPY_PROMPT_SHORTCUT;
 let TRANSLATE_PASTE_SHORTCUT;
-const ENV_TEMPLATE = `# PromptDe desktop configuration\n# Restart PromptDe after changing this file.\n\nGROQ_API_KEY=\nGEMINI_API_KEY=\n\n# Optional shortcut override\n# PROMPTDE_TRANSLATE_PASTE_SHORTCUT=CommandOrControl+F9\n`;
+let QUICK_PROMPT_PASTE_SHORTCUT;
+let STANDARD_PROMPT_PASTE_SHORTCUT;
+let DETAILED_PROMPT_PASTE_SHORTCUT;
+const ENV_TEMPLATE = `# PromptDe desktop configuration\n# Restart PromptDe after changing this file.\n\nGROQ_API_KEY=\nGEMINI_API_KEY=\n\n# Optional shortcut overrides\n# PROMPTDE_TRANSLATE_PASTE_SHORTCUT=CommandOrControl+F9\n# PROMPTDE_QUICK_PROMPT_PASTE_SHORTCUT=Shift+F1\n# PROMPTDE_STANDARD_PROMPT_PASTE_SHORTCUT=Shift+F2\n# PROMPTDE_DETAILED_PROMPT_PASTE_SHORTCUT=Shift+F3\n`;
 
 let mainWindow;
 let tray;
@@ -39,6 +42,9 @@ function loadShortcutConfig() {
   COPY_TRANSLATION_SHORTCUT = process.env.PROMPTDE_COPY_TRANSLATION_SHORTCUT || "CommandOrControl+Alt+E";
   COPY_PROMPT_SHORTCUT = process.env.PROMPTDE_COPY_PROMPT_SHORTCUT || "CommandOrControl+Alt+P";
   TRANSLATE_PASTE_SHORTCUT = process.env.PROMPTDE_TRANSLATE_PASTE_SHORTCUT || "CommandOrControl+F9";
+  QUICK_PROMPT_PASTE_SHORTCUT = process.env.PROMPTDE_QUICK_PROMPT_PASTE_SHORTCUT || "Shift+F1";
+  STANDARD_PROMPT_PASTE_SHORTCUT = process.env.PROMPTDE_STANDARD_PROMPT_PASTE_SHORTCUT || "Shift+F2";
+  DETAILED_PROMPT_PASTE_SHORTCUT = process.env.PROMPTDE_DETAILED_PROMPT_PASTE_SHORTCUT || "Shift+F3";
 }
 
 loadShortcutConfig();
@@ -58,7 +64,7 @@ function notifyDesktop(body) {
 
 async function pasteClipboardText(rawText) {
   const text = typeof rawText === "string" ? rawText.trim() : "";
-  if (!text || text.length > 100_000) throw new Error("The translated text is not valid.");
+  if (!text || text.length > 100_000) throw new Error("The text to paste is not valid.");
   clipboard.writeText(text);
   mainWindow?.hide();
 
@@ -97,7 +103,7 @@ async function pasteClipboardText(rawText) {
   } catch {
     return {
       pasted: false,
-      message: "Translation copied, but automatic paste is unavailable. Press Ctrl/Cmd+V to paste it.",
+      message: "Text copied, but automatic paste is unavailable. Press Ctrl/Cmd+V to paste it.",
     };
   }
 }
@@ -250,6 +256,9 @@ if (!hasLock) {
       copyTranslationShortcut: COPY_TRANSLATION_SHORTCUT,
       copyPromptShortcut: COPY_PROMPT_SHORTCUT,
       translatePasteShortcut: TRANSLATE_PASTE_SHORTCUT,
+      quickPromptPasteShortcut: QUICK_PROMPT_PASTE_SHORTCUT,
+      standardPromptPasteShortcut: STANDARD_PROMPT_PASTE_SHORTCUT,
+      detailedPromptPasteShortcut: DETAILED_PROMPT_PASTE_SHORTCUT,
       configDir,
       envPath,
     }));
@@ -281,6 +290,17 @@ if (!hasLock) {
       mainWindow?.webContents.send("promptde:translate-paste");
     })) {
       console.error(`Could not register translate-and-paste shortcut: ${TRANSLATE_PASTE_SHORTCUT}`);
+    }
+    for (const [shortcut, mode] of [
+      [QUICK_PROMPT_PASTE_SHORTCUT, "quick"],
+      [STANDARD_PROMPT_PASTE_SHORTCUT, "standard"],
+      [DETAILED_PROMPT_PASTE_SHORTCUT, "detailed"],
+    ]) {
+      if (!globalShortcut.register(shortcut, () => {
+        mainWindow?.webContents.send("promptde:prompt-paste", mode);
+      })) {
+        console.error(`Could not register ${mode} prompt-and-paste shortcut: ${shortcut}`);
+      }
     }
   }).catch((error) => {
     console.error(error);

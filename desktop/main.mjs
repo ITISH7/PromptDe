@@ -9,7 +9,6 @@ import {
   globalShortcut,
   ipcMain,
   Menu,
-  nativeImage,
   Notification,
   session,
   shell,
@@ -108,9 +107,9 @@ async function pasteClipboardText(rawText) {
   }
 }
 
-function createTrayIcon() {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#111722"/><circle cx="32" cy="32" r="22" fill="#ff6a3d"/><path d="M22 34v-4m7 10V24m7 12v-8m7 6v-4" stroke="white" stroke-width="4" stroke-linecap="round"/></svg>`;
-  return nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
+function appIconPath() {
+  const unpackedIcon = join(process.resourcesPath, "icon.png");
+  return existsSync(unpackedIcon) ? unpackedIcon : join(__dirname, "../assets/icon.png");
 }
 
 function ensureDesktopEnv() {
@@ -179,7 +178,7 @@ function createWindow(url) {
     show: false,
     backgroundColor: "#080b12",
     title: "PromptDe",
-    icon: createTrayIcon(),
+    icon: appIconPath(),
     webPreferences: {
       preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -205,7 +204,7 @@ function createWindow(url) {
 }
 
 function createTray() {
-  tray = new Tray(createTrayIcon());
+  tray = new Tray(appIconPath());
   tray.setToolTip(`PromptDe — ${SHORTCUT}`);
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: "Record a prompt", accelerator: SHORTCUT, click: showAndActivate },

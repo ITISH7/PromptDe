@@ -1,6 +1,6 @@
 {
   "name": "promptde",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "private": true,
   "type": "module",
   "main": "desktop/main.mjs",
@@ -35,8 +35,15 @@
     "files": [
       "desktop/**/*",
       "public/**/*",
+      "assets/**/*",
       "server.mjs",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/icon.png",
+        "to": "icon.png"
+      }
     ],
     "linux": {
       "category": "Utility",
@@ -44,6 +51,13 @@
       "maintainer": "PromptDe Contributors <support@promptde.local>",
       "syncDesktopName": true,
       "target": ["AppImage", "deb"]
+    },
+    "deb": {
+      "desktop": {
+        "entry": {
+          "Icon": "/opt/PromptDe/resources/icon.png"
+        }
+      }
     },
     "win": {
       "icon": "assets/icon.ico",

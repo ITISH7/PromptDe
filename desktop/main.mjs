@@ -79,13 +79,56 @@ function restoreClipboard(snapshot) {
   for (const [format, contents] of snapshot) clipboard.writeBuffer(format, contents);
 }
 
+async function linuxTerminalClipboardShortcut() {
+  try {
+    const windowId = (await runCommand("xdotool", ["getactivewindow"])).trim();
+    const windowClass = await runCommand("xprop", ["-id", windowId, "WM_CLASS"]);
+    return /terminal|kitty|alacritty|konsole|xterm|tilix|terminator|wezterm|ptyxis|urxvt/iu.test(windowClass);
+  } catch {
+    return false;
+  }
+}
+
+async function sendLinuxClipboardShortcut(key) {
+  const needsShift = await linuxTerminalClipboardShortcut();
+  try {
+    // A global shortcut can leave Electron/X11 seeing Ctrl or Shift as held.
+    // Release every common modifier first, then explicitly hold only the keys
+    // needed for copy/paste. This prevents the replacement from becoming a
+    // plain "c" or "v" when the original shortcut included Fn and Shift.
+    await runCommand("xdotool", [
+      "keyup",
+      "Control_L",
+      "Control_R",
+      "Shift_L",
+      "Shift_R",
+      "Alt_L",
+      "Alt_R",
+      "Super_L",
+      "Super_R",
+    ]);
+    await runCommand("xdotool", ["keydown", "Control_L"]);
+    if (needsShift) await runCommand("xdotool", ["keydown", "Shift_L"]);
+    try {
+      await runCommand("xdotool", ["key", key]);
+    } finally {
+      if (needsShift) await runCommand("xdotool", ["keyup", "Shift_L"]).catch(() => {});
+      await runCommand("xdotool", ["keyup", "Control_L"]).catch(() => {});
+    }
+  } catch {
+    const modifiers = needsShift ? ["-M", "ctrl", "-s", "40", "-M", "shift"] : ["-M", "ctrl"];
+    const releasedModifiers = needsShift ? ["-m", "shift", "-s", "40", "-m", "ctrl"] : ["-m", "ctrl"];
+    await runCommand("wtype", [...modifiers, "-s", "40", "-k", key, "-s", "40", ...releasedModifiers]);
+  }
+}
+
 async function copyCurrentSelection() {
   const previousClipboard = clipboardSnapshot();
   const marker = `promptde-no-selection-${Date.now()}-${Math.random()}`;
   clipboard.writeText(marker);
 
   try {
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 120));
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 220));
     if (process.platform === "win32") {
       await runCommand("powershell.exe", [
         "-NoProfile",
@@ -99,23 +142,7 @@ async function copyCurrentSelection() {
         "tell application \"System Events\" to keystroke \"c\" using command down",
       ]);
     } else {
-      let copyChord = "ctrl+c";
-      try {
-        const windowId = (await runCommand("xdotool", ["getactivewindow"])).trim();
-        const windowClass = await runCommand("xprop", ["-id", windowId, "WM_CLASS"]);
-        if (/terminal|kitty|alacritty|konsole|xterm|tilix|terminator|wezterm|ptyxis|urxvt/iu.test(windowClass)) {
-          copyChord = "ctrl+shift+c";
-        }
-      } catch {
-        // Use the standard copy chord when window classification is unavailable.
-      }
-      try {
-        await runCommand("xdotool", ["key", "--clearmodifiers", copyChord]);
-      } catch {
-        const modifiers = copyChord.includes("shift") ? ["-M", "ctrl", "-M", "shift"] : ["-M", "ctrl"];
-        const releasedModifiers = copyChord.includes("shift") ? ["-m", "shift", "-m", "ctrl"] : ["-m", "ctrl"];
-        await runCommand("wtype", [...modifiers, "-k", "c", ...releasedModifiers]);
-      }
+      await sendLinuxClipboardShortcut("c");
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 180));
     const selectedText = clipboard.readText();
@@ -167,21 +194,7 @@ async function pasteClipboardText(rawText) {
         "tell application \"System Events\" to keystroke \"v\" using command down",
       ]);
     } else {
-      try {
-        let pasteChord = "ctrl+v";
-        try {
-          const windowId = (await runCommand("xdotool", ["getactivewindow"])).trim();
-          const windowClass = await runCommand("xprop", ["-id", windowId, "WM_CLASS"]);
-          if (/terminal|kitty|alacritty|konsole|xterm|tilix|terminator|wezterm|ptyxis|urxvt/iu.test(windowClass)) {
-            pasteChord = "ctrl+shift+v";
-          }
-        } catch {
-          // Use the standard GUI paste chord when window classification is unavailable.
-        }
-        await runCommand("xdotool", ["key", "--clearmodifiers", pasteChord]);
-      } catch {
-        await runCommand("wtype", ["-M", "ctrl", "-k", "v", "-m", "ctrl"]);
-      }
+      await sendLinuxClipboardShortcut("v");
     }
     return { pasted: true };
   } catch {

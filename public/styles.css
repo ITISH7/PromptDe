@@ -295,13 +295,14 @@ textarea::placeholder, input::placeholder { color: #596273; }
 .copy-button:disabled { opacity: .35; cursor: not-allowed; }
 .copy-button svg { width: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 
+.primary-actions { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 30px auto 0; }
 .compile-button {
   min-width: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin: 30px auto 0;
+  margin: 0;
   padding: 14px 21px;
   border: 0;
   border-radius: 10px;
@@ -316,6 +317,9 @@ textarea::placeholder, input::placeholder { color: #596273; }
 .compile-button:hover { transform: translateY(-1px); box-shadow: 0 15px 35px rgba(255,106,61,.25); }
 .compile-button:disabled { opacity: .6; cursor: wait; transform: none; }
 .compile-button svg { width: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.translate-button { padding: 13px 18px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--panel); color: var(--muted); cursor: pointer; font-family: "Manrope", sans-serif; font-size: 12px; font-weight: 700; }
+.translate-button:hover { border-color: var(--orange); color: var(--text); }
+.translate-button:disabled { opacity: .6; cursor: wait; }
 .shortcut { margin: 10px 0 0; text-align: center; color: var(--quiet); font-size: 9px; }
 kbd { padding: 1px 4px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel-soft); font-family: inherit; }
 
@@ -389,6 +393,8 @@ kbd { padding: 1px 4px; border: 1px solid var(--line); border-radius: 3px; backg
   .panel-heading > div:first-child { width: 100%; }
   .mode-switch { align-self: stretch; }
   .mode-switch button { flex: 1; }
+  .primary-actions { flex-direction: column; }
+  .primary-actions button { width: min(100%, 280px); }
   .recorder { padding: 14px; }
   .record-button { width: 50px; height: 50px; }
   .record-copy span { max-width: 155px; }

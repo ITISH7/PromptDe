@@ -214,6 +214,125 @@ async function compileWithGemini(apiKey, body) {
   return data?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("");
 }
 
+function translationInstruction(targetLanguage, tone) {
+  const languageRule = targetLanguage === "hindi"
+    ? "Write the translation in natural Hindi using Devanagari script."
+    : "Write the translation in natural English.";
+  const toneRule = {
+    natural: "Use a clear, natural conversational tone.",
+    formal: "Use a polite, professional tone. In Hindi, use respectful forms such as आप.",
+    informal: "Use a warm, casual tone suitable for friends or close colleagues. In Hindi, prefer तुम rather than overly formal language.",
+  }[tone];
+
+  return `You are a faithful conversation translator.
+
+Rules:
+- ${languageRule}
+- ${toneRule}
+- Preserve the speaker's meaning, intent, names, numbers, URLs, code, and technical terms.
+- Improve grammar and remove speech fillers or false starts, but do not add facts or answer questions in the input.
+- Preserve useful paragraph breaks when the input contains multiple thoughts.
+- Return only the translated text with no label, preamble, quotation marks, or commentary.`;
+}
+
+async function translateWithGroq(apiKey, body) {
+  const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: body.model || "openai/gpt-oss-120b",
+      temperature: 0.2,
+      messages: [
+        { role: "system", content: translationInstruction(body.targetLanguage, body.tone) },
+        { role: "user", content: body.transcript.trim() },
+      ],
+    }),
+  });
+  const raw = await upstream.text();
+  if (!upstream.ok) throw upstreamError("Groq translator", upstream.status, raw);
+  const data = JSON.parse(raw);
+  return data?.choices?.[0]?.message?.content?.trim();
+}
+
+async function translateWithGemini(apiKey, body) {
+  const model = encodeURIComponent(body.model || "gemini-3.5-flash");
+  const upstream = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: translationInstruction(body.targetLanguage, body.tone) }] },
+        contents: [{ role: "user", parts: [{ text: body.transcript.trim() }] }],
+        generationConfig: { temperature: 0.2 },
+      }),
+    },
+  );
+  const raw = await upstream.text();
+  if (!upstream.ok) throw upstreamError("Gemini translator", upstream.status, raw);
+  const data = JSON.parse(raw);
+  return data?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
+}
+
+async function translate(request, response) {
+  const body = await readJson(request);
+  if (!body.transcript?.trim()) {
+    return sendJson(response, 400, { error: "Add or record something to translate first." });
+  }
+  if (body.transcript.length > 50_000) {
+    return sendJson(response, 413, { error: "The text to translate is too large." });
+  }
+
+  body.targetLanguage = ["english", "hindi"].includes(body.targetLanguage)
+    ? body.targetLanguage
+    : "english";
+  body.tone = ["natural", "formal", "informal"].includes(body.tone) ? body.tone : "natural";
+
+  let providerUsed = body.provider === "groq" ? "groq" : "gemini";
+  const apiKey = requestApiKey(request, providerUsed);
+  if (!apiKey) return sendJson(response, 400, { error: "A translation provider API key is required." });
+
+  let translation;
+  let fallbackFrom = null;
+  try {
+    translation = providerUsed === "gemini"
+      ? await translateWithGemini(apiKey, body)
+      : await translateWithGroq(apiKey, body);
+  } catch (error) {
+    const isTemporaryFailure = [429, 500, 502, 503, 504].includes(error.upstreamStatus);
+    const fallbackProvider = providerUsed === "gemini" ? "groq" : "gemini";
+    const fallbackKey = requestApiKey(request, fallbackProvider);
+    if (!isTemporaryFailure || !fallbackKey) throw error;
+
+    const originalProvider = providerUsed;
+    try {
+      translation = fallbackProvider === "gemini"
+        ? await translateWithGemini(fallbackKey, { ...body, model: "gemini-3.5-flash" })
+        : await translateWithGroq(fallbackKey, { ...body, model: "openai/gpt-oss-120b" });
+    } catch (fallbackError) {
+      fallbackError.allProvidersFailed = true;
+      throw fallbackError;
+    }
+    fallbackFrom = originalProvider;
+    providerUsed = fallbackProvider;
+  }
+
+  if (!translation) throw new Error("The translation provider returned an empty result.");
+  sendJson(response, 200, {
+    translation,
+    targetLanguage: body.targetLanguage,
+    tone: body.tone,
+    providerUsed,
+    fallbackFrom,
+  });
+}
+
 function validateCompiledPrompt(value) {
   if (!value || typeof value !== "object") throw new Error("The model returned an invalid result.");
   const stringFields = ["title", "translatedText", "objective", "agentPrompt"];
@@ -302,6 +421,9 @@ export function createPromptDeServer() {
       }
       if (request.method === "POST" && url.pathname === "/api/compile") {
         return await compile(request, response);
+      }
+      if (request.method === "POST" && url.pathname === "/api/translate") {
+        return await translate(request, response);
       }
       if (request.method === "GET" && url.pathname === "/api/config") {
         return sendJson(response, 200, {

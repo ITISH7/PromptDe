@@ -4,6 +4,9 @@ contextBridge.exposeInMainWorld("promptDeDesktop", {
   getInfo: () => ipcRenderer.invoke("promptde:get-desktop-info"),
   openConfigFolder: () => ipcRenderer.invoke("promptde:open-config-folder"),
   saveApiKeys: (keys) => ipcRenderer.invoke("promptde:save-api-keys", keys),
+  pasteText: (text) => ipcRenderer.invoke("promptde:paste-text", text),
+  notify: (message) => ipcRenderer.send("promptde:notify", message),
+  show: () => ipcRenderer.send("promptde:show"),
   onActivate: (callback) => {
     const handler = () => callback();
     ipcRenderer.on("promptde:activate", handler);
@@ -28,5 +31,10 @@ contextBridge.exposeInMainWorld("promptDeDesktop", {
     const handler = () => callback();
     ipcRenderer.on("promptde:copy-prompt", handler);
     return () => ipcRenderer.removeListener("promptde:copy-prompt", handler);
+  },
+  onTranslatePaste: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on("promptde:translate-paste", handler);
+    return () => ipcRenderer.removeListener("promptde:translate-paste", handler);
   },
 });

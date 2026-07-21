@@ -52,6 +52,7 @@
           <div class="shortcut-guide-item"><span>Record project context</span><kbd>Ctrl + Alt + C</kbd></div>
           <div class="shortcut-guide-item"><span>Copy translation</span><kbd>Ctrl + Alt + E</kbd></div>
           <div class="shortcut-guide-item"><span>Copy prompt</span><kbd>Ctrl + Alt + P</kbd></div>
+          <div class="shortcut-guide-item"><span>Translate &amp; paste</span><kbd>Ctrl + Shift + Alt + T</kbd></div>
         </div>
       </section>
 
@@ -154,10 +155,13 @@
         </div>
       </section>
 
-      <button class="compile-button" id="compileButton" type="button">
-        <span>Compile my prompt</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 4-1 6h6l-8 10 1-7H6l7-9Z"/></svg>
-      </button>
+      <div class="primary-actions">
+        <button class="translate-button" id="translateButton" type="button">Translate only</button>
+        <button class="compile-button" id="compileButton" type="button">
+          <span>Compile my prompt</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 4-1 6h6l-8 10 1-7H6l7-9Z"/></svg>
+        </button>
+      </div>
       <p class="shortcut">Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to compile</p>
     </main>
 
@@ -209,6 +213,22 @@
             <option value="openai/gpt-oss-20b">GPT-OSS 20B — Speed</option>
           </select>
         </div>
+      </section>
+
+      <section class="settings-section">
+        <div class="settings-title"><span>Translate &amp; paste</span><span class="provider-tag">Desktop</span></div>
+        <p class="reuse-note">Press <kbd>Ctrl/⌘ + Shift + Alt/Option + T</kbd> once to record and again to translate and paste at the active cursor.</p>
+        <label for="translationLanguage">Target language</label>
+        <select id="translationLanguage">
+          <option value="english">English</option>
+          <option value="hindi">Hindi (देवनागरी)</option>
+        </select>
+        <label for="translationTone">Conversation style</label>
+        <select id="translationTone">
+          <option value="natural">Natural</option>
+          <option value="formal">Formal and professional</option>
+          <option value="informal">Informal and friendly</option>
+        </select>
       </section>
 
       <button class="save-settings" id="saveSettings" type="button">Save keys and settings</button>

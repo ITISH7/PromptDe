@@ -14,6 +14,8 @@ const elements = {
   speechModel: document.querySelector("#speechModel"),
   geminiModel: document.querySelector("#geminiModel"),
   groqModel: document.querySelector("#groqModel"),
+  translationLanguage: document.querySelector("#translationLanguage"),
+  translationTone: document.querySelector("#translationTone"),
   geminiSettings: document.querySelector("#geminiSettings"),
   groqCompilerSettings: document.querySelector("#groqCompilerSettings"),
   language: document.querySelector("#language"),
@@ -28,6 +30,7 @@ const elements = {
   contextDetails: document.querySelector(".context-details"),
   context: document.querySelector("#context"),
   compileButton: document.querySelector("#compileButton"),
+  translateButton: document.querySelector("#translateButton"),
   emptyOutput: document.querySelector("#emptyOutput"),
   result: document.querySelector("#result"),
   resultBadge: document.querySelector("#resultBadge"),
@@ -69,6 +72,10 @@ function showToast(message, type = "success") {
   toastTimeout = setTimeout(() => { elements.toast.className = "toast"; }, 3600);
 }
 
+function desktopNotify(message) {
+  window.promptDeDesktop?.notify(message);
+}
+
 function openSettings() {
   elements.settingsDrawer.classList.add("open");
   elements.drawerBackdrop.classList.add("open");
@@ -85,6 +92,11 @@ function closeSettings() {
 
 function setCompilerProvider(provider) {
   state.compilerProvider = provider;
+  try {
+    localStorage.setItem("promptde:compilerProvider", provider);
+  } catch {
+    // Keep the preference in memory when local storage is unavailable.
+  }
   document.querySelectorAll("[data-provider]").forEach((button) => {
     button.classList.toggle("active", button.dataset.provider === provider);
   });
@@ -201,9 +213,14 @@ async function startRecording(target = "transcript") {
     state.mediaRecorder.start(250);
     state.startedAt = Date.now();
     elements.recorder.classList.add("recording");
-    elements.recordTitle.textContent = target === "context" ? "Listening for project context…" : "Listening… tap to stop";
-    elements.recordHint.textContent = target === "context" ? "Press the shortcut again to stop" : "Speak in Hindi, English, or Hinglish";
+    elements.recordTitle.textContent = target === "context"
+      ? "Listening for project context…"
+      : target === "translatePaste" ? "Listening for translation…" : "Listening… tap to stop";
+    elements.recordHint.textContent = ["context", "translatePaste"].includes(target)
+      ? "Press the shortcut again to stop"
+      : "Speak in Hindi, English, or Hinglish";
     elements.recordButton.setAttribute("aria-label", "Stop recording");
+    if (target === "translatePaste") desktopNotify("Recording translation. Press the shortcut again to stop.");
     state.timerId = setInterval(() => {
       const elapsed = (Date.now() - state.startedAt) / 1000;
       elements.timer.textContent = formatTimer(elapsed);
@@ -211,7 +228,9 @@ async function startRecording(target = "transcript") {
     }, 250);
   } catch (error) {
     state.recordingTarget = "transcript";
-    showToast(error.name === "NotAllowedError" ? "Microphone permission was denied." : `Could not start the microphone: ${error.message}`, "error");
+    const message = error.name === "NotAllowedError" ? "Microphone permission was denied." : `Could not start the microphone: ${error.message}`;
+    showToast(message, "error");
+    if (target === "translatePaste") desktopNotify(message);
   }
 }
 
@@ -237,6 +256,7 @@ async function transcribeRecording() {
     state.recordingTarget = "transcript";
     resetRecorderUi();
     showToast("The recording was too short. Please try again.", "error");
+    if (recordingTarget === "translatePaste") desktopNotify("The recording was too short. Please try again.");
     return;
   }
 
@@ -249,6 +269,7 @@ async function transcribeRecording() {
   formData.append("prompt", "Coding task with Hindi, English, Hinglish, source code symbols, package names, file paths, and technical terminology.");
 
   let shouldAutoCompile = false;
+  let translationTranscript = "";
   try {
     const response = await fetch("/api/transcribe", {
       method: "POST",
@@ -257,28 +278,37 @@ async function transcribeRecording() {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Transcription failed.");
-    const destination = recordingTarget === "context" ? elements.context : elements.transcript;
-    const existing = destination.value.trim();
-    destination.value = [existing, data.text.trim()].filter(Boolean).join(existing ? "\n" : "");
-    if (recordingTarget === "context") {
-      elements.contextDetails.open = true;
-      destination.focus();
+    if (recordingTarget === "translatePaste") {
+      translationTranscript = data.text.trim();
+      desktopNotify("Transcription ready. Translating…");
     } else {
-      updateWordCount();
+      const destination = recordingTarget === "context" ? elements.context : elements.transcript;
+      const existing = destination.value.trim();
+      destination.value = [existing, data.text.trim()].filter(Boolean).join(existing ? "\n" : "");
+      if (recordingTarget === "context") {
+        elements.contextDetails.open = true;
+        destination.focus();
+      } else {
+        updateWordCount();
+      }
     }
     shouldAutoCompile = recordingTarget === "transcript" && state.desktopAutoCompile;
     state.desktopAutoCompile = false;
-    showToast(recordingTarget === "context"
-      ? "Voice transcription added to project context."
-      : shouldAutoCompile ? "Transcription ready. Creating your prompt…" : "Transcription ready. Review it, then compile your prompt.");
+    if (recordingTarget !== "translatePaste") {
+      showToast(recordingTarget === "context"
+        ? "Voice transcription added to project context."
+        : shouldAutoCompile ? "Transcription ready. Creating your prompt…" : "Transcription ready. Review it, then compile your prompt.");
+    }
   } catch (error) {
     state.desktopAutoCompile = false;
     showToast(error.message, "error");
+    if (recordingTarget === "translatePaste") desktopNotify(error.message);
   } finally {
     state.recordingTarget = "transcript";
     resetRecorderUi();
   }
   if (shouldAutoCompile) await compilePrompt();
+  if (translationTranscript) await translateText(translationTranscript, true);
 }
 
 function compilerConfig() {
@@ -367,6 +397,7 @@ async function compilePrompt() {
       ? `Ready via ${usedProvider} fallback`
       : `Ready via ${usedProvider}`;
     elements.agentPrompt.value = data.agentPrompt;
+    elements.copyPromptLabel.textContent = "Copy prompt";
     elements.translatedText.textContent = data.translatedText || transcript;
     elements.translationPreview.classList.toggle("hidden", !elements.translatedText.textContent);
     elements.emptyOutput.classList.add("hidden");
@@ -385,10 +416,80 @@ async function compilePrompt() {
   }
 }
 
+async function translateText(transcript, autoPaste = false) {
+  if (state.busy) return;
+  if (!transcript?.trim()) {
+    showToast("Record or type something to translate first.", "error");
+    elements.transcript.focus();
+    return;
+  }
+  if (!providerReady(state.compilerProvider)) {
+    const providerName = state.compilerProvider === "gemini" ? "Gemini" : "Groq";
+    const message = `Add your ${providerName} API key in Settings before translating.`;
+    showToast(message, "error");
+    desktopNotify(message);
+    window.promptDeDesktop?.show();
+    openSettings();
+    return;
+  }
+
+  const config = compilerConfig();
+  state.busy = true;
+  elements.translateButton.disabled = true;
+  elements.translateButton.textContent = "Translating…";
+  try {
+    const response = await fetch("/api/translate", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...requestKeyHeaders() },
+      body: JSON.stringify({
+        provider: state.compilerProvider,
+        model: config.model,
+        transcript,
+        targetLanguage: elements.translationLanguage.value,
+        tone: elements.translationTone.value,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Translation failed.");
+
+    const languageLabel = data.targetLanguage === "hindi" ? "Hindi" : "English";
+    const toneLabel = `${data.tone[0].toUpperCase()}${data.tone.slice(1)}`;
+    elements.resultTitle.textContent = `${languageLabel} translation`;
+    elements.resultBadge.textContent = `${toneLabel} · ${data.providerUsed}`;
+    elements.agentPrompt.value = data.translation;
+    elements.translatedText.textContent = data.translation;
+    elements.copyPromptLabel.textContent = "Copy translation";
+    elements.translationPreview.classList.add("hidden");
+    elements.emptyOutput.classList.add("hidden");
+    elements.result.classList.remove("hidden");
+    elements.resultInsights.replaceChildren();
+    elements.resultNotes.classList.add("hidden");
+    updateTokenEstimate();
+
+    if (autoPaste && window.promptDeDesktop) {
+      const pasteResult = await window.promptDeDesktop.pasteText(data.translation);
+      const message = pasteResult.pasted
+        ? `${languageLabel} translation pasted.`
+        : pasteResult.message;
+      desktopNotify(message);
+      showToast(message, pasteResult.pasted ? "success" : "error");
+    } else {
+      showToast(`${languageLabel} translation ready.`);
+    }
+  } catch (error) {
+    showToast(error.message, "error");
+    desktopNotify(error.message);
+  } finally {
+    state.busy = false;
+    elements.translateButton.disabled = false;
+    elements.translateButton.textContent = "Translate only";
+  }
+}
+
 async function copyPrompt() {
   const text = elements.agentPrompt.value.trim();
   if (!text) {
-    showToast("Compile a prompt before copying it.", "error");
+    showToast("Create a prompt or translation before copying it.", "error");
     return;
   }
   try {
@@ -406,7 +507,7 @@ async function copyPrompt() {
 async function copyTranslation() {
   const text = elements.translatedText.textContent.trim();
   if (!text) {
-    showToast("Compile a prompt before copying its translation.", "error");
+    showToast("Create a translation before copying it.", "error");
     return;
   }
   try {
@@ -433,6 +534,61 @@ function rememberWebKey(provider, value) {
   } catch {
     // The key still remains available in memory when session storage is unavailable.
   }
+}
+
+function saveTranslationPreferences() {
+  try {
+    localStorage.setItem("promptde:translationLanguage", elements.translationLanguage.value);
+    localStorage.setItem("promptde:translationTone", elements.translationTone.value);
+  } catch {
+    // The current selections still work for this session.
+  }
+}
+
+function loadPreferences() {
+  try {
+    const language = localStorage.getItem("promptde:translationLanguage");
+    const tone = localStorage.getItem("promptde:translationTone");
+    if (["english", "hindi"].includes(language)) elements.translationLanguage.value = language;
+    if (["natural", "formal", "informal"].includes(tone)) elements.translationTone.value = tone;
+    const provider = localStorage.getItem("promptde:compilerProvider");
+    return ["gemini", "groq"].includes(provider) ? provider : "gemini";
+  } catch {
+    return "gemini";
+  }
+}
+
+async function toggleTranslationPaste() {
+  if (state.mediaRecorder?.state === "recording") {
+    if (state.recordingTarget !== "translatePaste") {
+      desktopNotify("Finish the current recording before starting translation mode.");
+      return;
+    }
+    desktopNotify("Recording stopped. Transcribing…");
+    stopRecording();
+    return;
+  }
+  if (state.busy) {
+    desktopNotify("PromptDe is still processing the previous request.");
+    return;
+  }
+  if (!providerReady("groq")) {
+    desktopNotify("Add a Groq API key before using voice translation.");
+    window.promptDeDesktop?.show();
+    openSettings();
+    return;
+  }
+  if (!providerReady(state.compilerProvider)) {
+    const availableProvider = providerReady("gemini") ? "gemini" : providerReady("groq") ? "groq" : null;
+    if (availableProvider) setCompilerProvider(availableProvider);
+    else {
+      desktopNotify("Add a Gemini or Groq compiler key before using translation.");
+      window.promptDeDesktop?.show();
+      openSettings();
+      return;
+    }
+  }
+  await startRecording("translatePaste");
 }
 
 async function saveProviderSettings() {
@@ -489,8 +645,11 @@ elements.transcript.addEventListener("input", updateWordCount);
 elements.clearTranscript.addEventListener("click", clearTranscript);
 elements.agentPrompt.addEventListener("input", updateTokenEstimate);
 elements.compileButton.addEventListener("click", compilePrompt);
+elements.translateButton.addEventListener("click", () => translateText(elements.transcript.value));
 elements.copyButton.addEventListener("click", copyPrompt);
 elements.copyTranslation.addEventListener("click", copyTranslation);
+elements.translationLanguage.addEventListener("change", saveTranslationPreferences);
+elements.translationTone.addEventListener("change", saveTranslationPreferences);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeSettings();
   if (!window.promptDeDesktop && (event.ctrlKey || event.metaKey) && event.shiftKey && event.key === "Backspace") {
@@ -522,6 +681,7 @@ document.addEventListener("keydown", (event) => {
 
 updateWordCount();
 updateTokenEstimate();
+const preferredCompilerProvider = loadPreferences();
 if (!window.promptDeDesktop) {
   try {
     state.userKeys.groq = sessionStorage.getItem("promptde:groqApiKey") || "";
@@ -530,7 +690,7 @@ if (!window.promptDeDesktop) {
     // Continue with in-memory keys only when session storage is unavailable.
   }
 }
-setCompilerProvider("gemini");
+setCompilerProvider(preferredCompilerProvider);
 
 fetch("/api/config")
   .then((response) => response.json())
@@ -565,4 +725,5 @@ if (window.promptDeDesktop) {
   });
   window.promptDeDesktop.onCopyTranslation(copyTranslation);
   window.promptDeDesktop.onCopyPrompt(copyPrompt);
+  window.promptDeDesktop.onTranslatePaste(toggleTranslationPaste);
 }

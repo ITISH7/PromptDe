@@ -6,6 +6,7 @@ PromptDe turns spoken or typed Hindi, English, and Hinglish ideas into structure
 
 - Transcribes microphone recordings with Groq Whisper.
 - Compiles transcripts with Gemini or Groq into concise, structured prompts.
+- Translates speech into natural, formal, or informal English/Hindi and pastes it at the active cursor.
 - Supports Quick, Standard, and Detailed output modes.
 - Accepts optional project context and produces a separate English interpretation.
 - Copies the generated prompt to the clipboard.
@@ -24,8 +25,11 @@ Before starting, install or obtain:
 - A microphone and permission to use it if you want speech input.
 - A [Groq API key](https://console.groq.com/keys) for speech transcription.
 - A [Gemini API key](https://aistudio.google.com/app/apikey) if you want to use the default Gemini prompt compiler. Alternatively, Groq can handle both transcription and prompt compilation.
+- On Linux, `xdotool` for automatic paste on X11 or `wtype` on Wayland. Translation still falls back to the clipboard when neither command is available.
 
 No API keys are needed to run the automated tests.
+
+On Debian/Ubuntu X11 systems, install the paste helper with `sudo apt install xdotool`. On Wayland systems that support virtual-keyboard input, use `sudo apt install wtype` instead.
 
 ## Installation
 
@@ -64,9 +68,10 @@ PromptDe supports two ways to provide API keys.
    GROQ_API_KEY=gsk_your_groq_api_key_here
    GEMINI_API_KEY=your_gemini_api_key_here
    PORT=4173
+   PROMPTDE_TRANSLATE_PASTE_SHORTCUT=CommandOrControl+Shift+Alt+T
    ```
 
-`GROQ_API_KEY` is required for recording. `GEMINI_API_KEY` is required only when Gemini is selected for compilation. `PORT` is optional and defaults to `4173` for the web server. If both provider keys are present, PromptDe can fail over to the other provider after a temporary compiler error.
+`GROQ_API_KEY` is required for recording. `GEMINI_API_KEY` is required only when Gemini is selected for compilation or translation. `PORT` is optional and defaults to `4173` for the web server. `PROMPTDE_TRANSLATE_PASTE_SHORTCUT` optionally changes the desktop translation shortcut. If both provider keys are present, PromptDe can fail over to the other provider after a temporary compiler error.
 
 The repository ignores `.env`; never commit real credentials.
 
@@ -110,8 +115,11 @@ Global shortcuts while the desktop application is running:
 | Record project context | `Ctrl+Alt+C` | `Cmd+Option+C` |
 | Copy the English translation | `Ctrl+Alt+E` | `Cmd+Option+E` |
 | Copy the compiled prompt | `Ctrl+Alt+P` | `Cmd+Option+P` |
+| Record, translate, and paste | `Ctrl+Shift+Alt+T` | `Cmd+Shift+Option+T` |
 
 Press the recording shortcut a second time to stop recording and continue the workflow.
+
+For translation mode, choose the target language and conversation style under **Settings → Translate & paste**. Place the cursor in another application, press the shortcut once, speak, and press it again. PromptDe translates the recording and pastes the result without opening its window. If automatic paste is unavailable, the translation remains on the clipboard so it can be pasted manually.
 
 ## Linting and tests
 

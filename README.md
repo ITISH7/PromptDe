@@ -1,96 +1,164 @@
-# PromptDe Desktop
+# PromptDe
 
-PromptDe is a Windows and Linux desktop utility that turns Hindi, English, or Hinglish speech into concise, structured English prompts for coding agents.
-
-Repository: [github.com/ITISH7/PromptDe](https://github.com/ITISH7/PromptDe)
+PromptDe turns spoken or typed Hindi, English, and Hinglish ideas into structured English prompts for coding agents. It can run as a local web application or as an Electron desktop utility with global keyboard shortcuts.
 
 ## Features
 
-- Runs from the desktop tray and activates globally with `Ctrl+Shift+Space`.
-- Records from the system microphone and automatically completes the workflow when activated by the shortcut.
-- Transcribes multilingual speech using Groq Whisper.
-- Produces an explicit English translation/interpretation.
-- Compiles the translated intent with Gemini, with automatic Groq failover when either provider is temporarily overloaded or rate-limited.
+- Transcribes microphone recordings with Groq Whisper.
+- Compiles transcripts with Gemini or Groq into concise, structured prompts.
 - Supports Quick, Standard, and Detailed output modes.
-- Accepts optional project context without requiring repository access.
-- Estimates output tokens and copies the final prompt to the clipboard.
-- Keeps configured desktop/server API keys in private `.env` storage without exposing saved values to the renderer.
-- Lets each user bring their own Groq and Gemini API keys from the Settings drawer.
+- Accepts optional project context and produces a separate English interpretation.
+- Copies the generated prompt to the clipboard.
+- Runs from the desktop tray on Linux and Windows.
+- Keeps desktop API keys in a local owner-readable configuration file; browser-entered keys last only for the current tab session.
 
-## Requirements
+## Technology
 
-- Node.js 18.17 or newer for development.
-- A Groq API key for speech transcription.
-- A Gemini API key for the default prompt compiler, or use Groq for both steps.
+PromptDe uses Node.js ES modules and the built-in HTTP server for its backend, plain HTML/CSS/JavaScript for its browser interface, and Electron for its desktop shell. Dependencies and scripts are managed with npm.
 
-Both providers offer free tiers, but their quotas and data policies can change. PromptDe never enables billing or upgrades a provider account.
+## Prerequisites
 
-## Configure API keys
+Before starting, install or obtain:
+
+- [Node.js](https://nodejs.org/) 18.17 or newer, including npm.
+- A microphone and permission to use it if you want speech input.
+- A [Groq API key](https://console.groq.com/keys) for speech transcription.
+- A [Gemini API key](https://aistudio.google.com/app/apikey) if you want to use the default Gemini prompt compiler. Alternatively, Groq can handle both transcription and prompt compilation.
+
+No API keys are needed to run the automated tests.
+
+## Installation
+
+1. Clone the repository and enter it:
+
+   ```bash
+   git clone https://github.com/ITISH7/PromptDe.git
+   cd PromptDe
+   ```
+
+2. Install the exact dependency versions recorded in `package-lock.json`:
+
+   ```bash
+   npm ci
+   ```
+
+   Use `npm install` instead when intentionally updating dependencies.
+
+## Configuration
+
+PromptDe supports two ways to provide API keys.
+
+### Environment file
+
+1. Copy the example file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   In PowerShell, use `Copy-Item .env.example .env`.
+
+2. Edit `.env`:
+
+   ```dotenv
+   GROQ_API_KEY=gsk_your_groq_api_key_here
+   GEMINI_API_KEY=your_gemini_api_key_here
+   PORT=4173
+   ```
+
+`GROQ_API_KEY` is required for recording. `GEMINI_API_KEY` is required only when Gemini is selected for compilation. `PORT` is optional and defaults to `4173` for the web server. If both provider keys are present, PromptDe can fail over to the other provider after a temporary compiler error.
+
+The repository ignores `.env`; never commit real credentials.
+
+### Settings in the application
+
+Open **Settings** and enter the provider keys there instead of, or in addition to, using `.env`.
+
+- In the web application, keys are stored in browser session storage and cleared when the tab is closed. They are sent only with provider requests and are not persisted by the server.
+- In the desktop application, keys are written to PromptDe's local configuration `.env`. Use **Settings → Open configuration folder** to locate it. Saved values are not read back into the page.
+
+## Run locally
+
+### Web application
+
+Start the local server:
 
 ```bash
 npm start
 ```
 
-For development, copy the environment template and add your keys:
+Open [http://127.0.0.1:4173](http://127.0.0.1:4173) unless you changed `PORT`. Allow microphone access when prompted. You can also type or paste a transcript without granting microphone access.
+
+Stop the server with `Ctrl+C`.
+
+### Desktop application
+
+Start the Electron application in development mode:
 
 ```bash
-cp .env.example .env
-```
-
-For an installed desktop build, open **Settings → Open configuration folder**, edit the generated `.env`, and restart PromptDe.
-
-You can also enter or replace both keys directly in **Settings**. The desktop app writes them to its owner-readable local configuration file and activates them immediately. It never reads saved key values back into the page.
-
-In the web app, keys entered in **Settings** are kept only in browser session storage, sent with provider requests, and never persisted by the PromptDe server. They are cleared when the browser tab is closed.
-
-Keys remain in the local main/server process and are never returned to the renderer. They are not logged, cached, placed in URLs, or sent through frontend request headers. Keep `.env` private; it is excluded by `.gitignore`.
-
-## Run the desktop app
-
-```bash
-npm install
 npm run desktop
 ```
 
-Press `Ctrl+Shift+Space` anywhere to show PromptDe and start recording. Press it again to stop, transcribe, translate, and compile automatically. Closing the window keeps PromptDe available in the system tray.
+The desktop shell starts its own local server on an available port. Closing the window hides it in the system tray; use the tray menu to quit it completely.
 
-The desktop app also registers these global shortcuts:
+Global shortcuts while the desktop application is running:
 
-- Press `Ctrl+Shift+Backspace` (`Cmd+Shift+Backspace` on macOS) to clear the transcript.
-- Press `Ctrl+Alt+C` (`Cmd+Option+C` on macOS) to start recording project context. Press it again to stop and append the transcription to Project Context.
-- Press `Ctrl+Alt+E` (`Cmd+Option+E` on macOS) to copy the English translation.
-- Press `Ctrl+Alt+P` (`Cmd+Option+P` on macOS) to copy the compiled prompt.
+| Action | Windows/Linux | macOS equivalent |
+| --- | --- | --- |
+| Show, record, and compile | `Ctrl+Shift+Space` | `Cmd+Shift+Space` |
+| Clear the transcript | `Ctrl+Shift+Backspace` | `Cmd+Shift+Backspace` |
+| Record project context | `Ctrl+Alt+C` | `Cmd+Option+C` |
+| Copy the English translation | `Ctrl+Alt+E` | `Cmd+Option+E` |
+| Copy the compiled prompt | `Ctrl+Alt+P` | `Cmd+Option+P` |
 
-The original browser development server remains available with `npm start`.
+Press the recording shortcut a second time to stop recording and continue the workflow.
 
-## Build installers
+## Linting and tests
 
-Linux AppImage and Debian package:
+Run the project's syntax validation across the server, browser, desktop, and test JavaScript files:
+
+```bash
+npm run lint
+```
+
+Run the server integration tests with Node's built-in test runner:
+
+```bash
+npm test
+```
+
+The tests start the server on an ephemeral local port and do not call Groq or Gemini.
+
+## Build desktop packages
+
+Create Linux AppImage and Debian packages:
 
 ```bash
 npm run pack:linux
 ```
 
-Windows NSIS installer (normally run on Windows or a configured cross-build machine):
+Create a Windows NSIS installer (normally on Windows or a configured cross-build host):
 
 ```bash
 npm run pack:windows
 ```
 
-Portable Windows ZIP, which can also be cross-built from Linux:
+Create a portable Windows ZIP:
 
 ```bash
 npm run pack:windows:portable
 ```
 
-The included GitHub Actions workflow builds native Linux and Windows artifacts on their respective operating systems.
+Generated packages are written to `dist/`. The release build workflow creates native Linux and Windows artifacts for version tags. The CI workflow installs dependencies, validates syntax, and runs tests for pushes and pull requests targeting `main`.
 
-## Check the source
+## Project structure
 
-```bash
-npm run check
+```text
+.
+├── desktop/                 Electron main process, launcher, and preload bridge
+├── public/                  Browser interface
+├── test/                    Node integration tests
+├── .github/workflows/       CI and desktop packaging workflows
+├── server.mjs               HTTP server and provider integrations
+└── package.json             npm scripts and packaging configuration
 ```
-
-## Free/private alternatives
-
-The provider boundary is isolated in `server.mjs`, so a future offline adapter can use `faster-whisper` or `whisper.cpp` for transcription and Ollama for prompt compilation.

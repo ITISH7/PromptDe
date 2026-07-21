@@ -177,7 +177,12 @@ async function pasteClipboardText(rawText) {
   const text = typeof rawText === "string" ? rawText.trim() : "";
   if (!text || text.length > 100_000) throw new Error("The text to paste is not valid.");
   clipboard.writeText(text);
-  mainWindow?.hide();
+
+  // Keep PromptDe represented in the taskbar when a voice prompt,
+  // translation, or selected-text rewrite is pasted. If PromptDe currently
+  // owns focus, minimizing transfers focus for the paste without turning the
+  // application into a tray-only process.
+  if (mainWindow?.isFocused()) mainWindow.minimize();
 
   await new Promise((resolveDelay) => setTimeout(resolveDelay, 180));
   try {
@@ -274,6 +279,7 @@ function createWindow(url) {
     minWidth: 900,
     minHeight: 700,
     show: false,
+    skipTaskbar: false,
     backgroundColor: "#080b12",
     title: "PromptDe",
     icon: appIconPath(),

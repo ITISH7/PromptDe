@@ -25,7 +25,7 @@ let CONTEXT_SHORTCUT;
 let COPY_TRANSLATION_SHORTCUT;
 let COPY_PROMPT_SHORTCUT;
 let TRANSLATE_PASTE_SHORTCUT;
-const ENV_TEMPLATE = `# PromptDe desktop configuration\n# Restart PromptDe after changing this file.\n\nGROQ_API_KEY=\nGEMINI_API_KEY=\n\n# Optional shortcut override\n# PROMPTDE_TRANSLATE_PASTE_SHORTCUT=CommandOrControl+Shift+Alt+T\n`;
+const ENV_TEMPLATE = `# PromptDe desktop configuration\n# Restart PromptDe after changing this file.\n\nGROQ_API_KEY=\nGEMINI_API_KEY=\n\n# Optional shortcut override\n# PROMPTDE_TRANSLATE_PASTE_SHORTCUT=CommandOrControl+F9\n`;
 
 let mainWindow;
 let tray;
@@ -38,7 +38,7 @@ function loadShortcutConfig() {
   CONTEXT_SHORTCUT = process.env.PROMPTDE_CONTEXT_SHORTCUT || "CommandOrControl+Alt+C";
   COPY_TRANSLATION_SHORTCUT = process.env.PROMPTDE_COPY_TRANSLATION_SHORTCUT || "CommandOrControl+Alt+E";
   COPY_PROMPT_SHORTCUT = process.env.PROMPTDE_COPY_PROMPT_SHORTCUT || "CommandOrControl+Alt+P";
-  TRANSLATE_PASTE_SHORTCUT = process.env.PROMPTDE_TRANSLATE_PASTE_SHORTCUT || "CommandOrControl+Shift+Alt+T";
+  TRANSLATE_PASTE_SHORTCUT = process.env.PROMPTDE_TRANSLATE_PASTE_SHORTCUT || "CommandOrControl+F9";
 }
 
 loadShortcutConfig();

@@ -68,7 +68,7 @@ PromptDe supports two ways to provide API keys.
    GROQ_API_KEY=gsk_your_groq_api_key_here
    GEMINI_API_KEY=your_gemini_api_key_here
    PORT=4173
-   PROMPTDE_TRANSLATE_PASTE_SHORTCUT=CommandOrControl+Shift+Alt+T
+   PROMPTDE_TRANSLATE_PASTE_SHORTCUT=CommandOrControl+F9
    ```
 
 `GROQ_API_KEY` is required for recording. `GEMINI_API_KEY` is required only when Gemini is selected for compilation or translation. `PORT` is optional and defaults to `4173` for the web server. `PROMPTDE_TRANSLATE_PASTE_SHORTCUT` optionally changes the desktop translation shortcut. If both provider keys are present, PromptDe can fail over to the other provider after a temporary compiler error.
@@ -115,7 +115,7 @@ Global shortcuts while the desktop application is running:
 | Record project context | `Ctrl+Alt+C` | `Cmd+Option+C` |
 | Copy the English translation | `Ctrl+Alt+E` | `Cmd+Option+E` |
 | Copy the compiled prompt | `Ctrl+Alt+P` | `Cmd+Option+P` |
-| Record, translate, and paste | `Ctrl+Shift+Alt+T` | `Cmd+Shift+Option+T` |
+| Record, translate, and paste | `Ctrl+F9` | `Cmd+F9` |
 
 Press the recording shortcut a second time to stop recording and continue the workflow.
 

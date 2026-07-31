@@ -163,6 +163,8 @@ Create Linux AppImage and Debian packages:
 
 ```bash
 npm run pack:linux
+sudo dpkg -i dist/promptde_0.1.4_amd64.deb
+sudo apt --fix-broken install
 ```
 
 Create a Windows NSIS installer (normally on Windows or a configured cross-build host):

@@ -18,10 +18,10 @@
     "lint": "npm run check",
     "test": "node --test",
     "prepack:linux": "node scripts/check-build-environment.mjs",
-    "pack:linux": "electron-builder --linux AppImage deb",
+    "pack:linux": "electron-builder --linux AppImage deb --publish never",
     "prepack:windows": "node scripts/check-build-environment.mjs",
-    "pack:windows": "electron-builder --win nsis",
-    "pack:windows:portable": "electron-builder --win zip"
+    "pack:windows": "electron-builder --win nsis --publish never",
+    "pack:windows:portable": "electron-builder --win zip --publish never"
   },
   "engines": {
     "node": ">=22.12.0"

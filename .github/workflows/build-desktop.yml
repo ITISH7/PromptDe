@@ -75,4 +75,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.release_tag }}
-        run: gh release edit "$RELEASE_TAG" --draft=false
+        run: |
+          release_id="$(
+            gh api --paginate "repos/$GITHUB_REPOSITORY/releases" |
+              jq -r --arg tag "$RELEASE_TAG" \
+                '.[] | select(.tag_name == $tag and .draft == true) | .id' |
+              head -n 1
+          )"
+
+          if [[ -z "$release_id" ]]; then
+            echo "::error title=Draft release not found::No draft release exists for $RELEASE_TAG"
+            exit 1
+          fi
+
+          gh api \
+            --method PATCH \
+            "repos/$GITHUB_REPOSITORY/releases/$release_id" \
+            --field draft=false

@@ -14,10 +14,12 @@
   "scripts": {
     "start": "node server.mjs",
     "desktop": "node desktop/launch.cjs",
-    "check": "node --check server.mjs && node --check public/app.js && node --check desktop/main.mjs && node --check desktop/preload.cjs && node --check desktop/launch.cjs && node --check test/server.test.mjs",
+    "check": "node --check server.mjs && node --check public/app.js && node --check desktop/main.mjs && node --check desktop/preload.cjs && node --check desktop/launch.cjs && node --check scripts/check-build-environment.mjs && node --check test/server.test.mjs",
     "lint": "npm run check",
     "test": "node --test",
+    "prepack:linux": "node scripts/check-build-environment.mjs",
     "pack:linux": "electron-builder --linux AppImage deb",
+    "prepack:windows": "node scripts/check-build-environment.mjs",
     "pack:windows": "electron-builder --win nsis",
     "pack:windows:portable": "electron-builder --win zip"
   },
@@ -61,7 +63,7 @@
     },
     "win": {
       "icon": "assets/icon.ico",
-      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
+      "artifactName": "${productName}-Setup-${arch}.${ext}",
       "target": ["nsis"]
     },
     "nsis": {

@@ -49,6 +49,13 @@ uses AppImage extraction mode so installation does not depend on FUSE.
 
 Windows (64-bit, PowerShell):
 
+Download and open the installer:
+
+[Download PromptDe for Windows](https://github.com/ITISH7/PromptDe/releases/latest/download/PromptDe-Setup-x64.exe)
+
+No Node.js, npm, Git, or PowerShell is required on the destination computer.
+The PowerShell downloader below is an optional alternative:
+
 ```powershell
 $script = "$env:TEMP\install-promptde.ps1"
 Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/ITISH7/PromptDe/HEAD/scripts/install-desktop.ps1 -OutFile $script

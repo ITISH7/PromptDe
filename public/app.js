@@ -49,7 +49,7 @@ const elements = {
 };
 
 const state = {
-  compilerProvider: "gemini",
+  compilerProvider: "groq",
   promptMode: "standard",
   mediaRecorder: null,
   mediaStream: null,
@@ -114,6 +114,13 @@ function setStatus(element, ready, readyText, missingText) {
 
 function providerReady(provider) {
   return Boolean(state.userKeys[provider] || state.serverKeys[provider]);
+}
+
+function selectAvailableCompilerProvider() {
+  if (providerReady(state.compilerProvider)) return state.compilerProvider;
+  const availableProvider = providerReady("groq") ? "groq" : providerReady("gemini") ? "gemini" : null;
+  if (availableProvider) setCompilerProvider(availableProvider);
+  return availableProvider;
 }
 
 function requestKeyHeaders() {
@@ -377,12 +384,12 @@ async function compilePrompt({ mode = state.promptMode, autoPaste = false } = {}
     elements.transcript.focus();
     return;
   }
-  const config = compilerConfig();
-  if (!providerReady(state.compilerProvider)) {
-    showToast(`Add your ${state.compilerProvider === "gemini" ? "Gemini" : "Groq"} API key in Settings first.`, "error");
+  if (!selectAvailableCompilerProvider()) {
+    showToast("Add a Groq or Gemini API key in Settings first.", "error");
     openSettings();
     return;
   }
+  const config = compilerConfig();
 
   state.busy = true;
   elements.compileButton.disabled = true;
@@ -442,9 +449,8 @@ async function translateText(transcript, autoPaste = false) {
     elements.transcript.focus();
     return;
   }
-  if (!providerReady(state.compilerProvider)) {
-    const providerName = state.compilerProvider === "gemini" ? "Gemini" : "Groq";
-    const message = `Add your ${providerName} API key in Settings before translating.`;
+  if (!selectAvailableCompilerProvider()) {
+    const message = "Add a Groq or Gemini API key in Settings before translating.";
     showToast(message, "error");
     desktopNotify(message);
     window.promptDeDesktop?.show();
@@ -571,9 +577,9 @@ function loadPreferences() {
     if (["english", "hindi"].includes(language)) elements.translationLanguage.value = language;
     if (["natural", "formal", "informal"].includes(tone)) elements.translationTone.value = tone;
     const provider = localStorage.getItem("promptde:compilerProvider");
-    return ["gemini", "groq"].includes(provider) ? provider : "gemini";
+    return ["gemini", "groq"].includes(provider) ? provider : null;
   } catch {
-    return "gemini";
+    return null;
   }
 }
 
@@ -597,15 +603,11 @@ async function toggleTranslationPaste() {
     openSettings();
     return;
   }
-  if (!providerReady(state.compilerProvider)) {
-    const availableProvider = providerReady("gemini") ? "gemini" : providerReady("groq") ? "groq" : null;
-    if (availableProvider) setCompilerProvider(availableProvider);
-    else {
+  if (!selectAvailableCompilerProvider()) {
       desktopNotify("Add a Gemini or Groq compiler key before using translation.");
       window.promptDeDesktop?.show();
       openSettings();
       return;
-    }
   }
   await startRecording("translatePaste");
 }
@@ -631,15 +633,11 @@ async function togglePromptPaste(mode) {
     openSettings();
     return;
   }
-  if (!providerReady(state.compilerProvider)) {
-    const availableProvider = providerReady("gemini") ? "gemini" : providerReady("groq") ? "groq" : null;
-    if (availableProvider) setCompilerProvider(availableProvider);
-    else {
+  if (!selectAvailableCompilerProvider()) {
       desktopNotify("Add a Gemini or Groq compiler key before using voice prompt shortcuts.");
       window.promptDeDesktop?.show();
       openSettings();
       return;
-    }
   }
   state.promptPasteMode = mode;
   await startRecording("promptPaste");
@@ -660,16 +658,12 @@ async function rewriteSelectedText(payload = {}) {
     window.promptDeDesktop.finishSelectionRewrite();
     return;
   }
-  if (!providerReady(state.compilerProvider)) {
-    const availableProvider = providerReady("gemini") ? "gemini" : providerReady("groq") ? "groq" : null;
-    if (availableProvider) setCompilerProvider(availableProvider);
-    else {
+  if (!selectAvailableCompilerProvider()) {
       desktopNotify("Add a Gemini or Groq key before rewriting selected text.");
       window.promptDeDesktop.show();
       openSettings();
       window.promptDeDesktop.finishSelectionRewrite();
       return;
-    }
   }
 
   state.busy = true;
@@ -731,6 +725,7 @@ async function saveProviderSettings() {
       rememberWebKey("groq", groqKey);
       rememberWebKey("gemini", geminiKey);
     }
+    selectAvailableCompilerProvider();
     elements.groqApiKey.value = "";
     elements.geminiApiKey.value = "";
     updateConfigurationStatus();
@@ -810,13 +805,16 @@ if (!window.promptDeDesktop) {
     // Continue with in-memory keys only when session storage is unavailable.
   }
 }
-setCompilerProvider(preferredCompilerProvider);
+// Groq is already required for voice transcription, so it is the least
+// surprising default compiler. Gemini remains available as an optional choice.
+setCompilerProvider(preferredCompilerProvider || "groq");
 
 fetch("/api/config")
   .then((response) => response.json())
   .then((config) => {
     state.serverKeys.groq = Boolean(config.groqConfigured);
     state.serverKeys.gemini = Boolean(config.geminiConfigured);
+    selectAvailableCompilerProvider();
     updateConfigurationStatus();
   })
   .catch(() => {});

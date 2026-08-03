@@ -2,7 +2,7 @@
 Name=PromptDe
 GenericName=Voice Prompt Compiler
 Comment=Turn Hindi, English, or Hinglish speech into agent-ready prompts
-Exec=/home/fiftyfive/.local/bin/promptde
+Exec=promptde
 Icon=promptde
 Terminal=false
 Type=Application

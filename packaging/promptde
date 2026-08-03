@@ -38,4 +38,11 @@ case "${GIO_LAUNCHED_DESKTOP_FILE:-}" in
     ;;
 esac
 
-exec "/home/fiftyfive/.local/opt/promptde/promptde" --class=promptde "$@"
+app_image="${PROMPTDE_APPIMAGE:-${HOME}/.local/opt/promptde/PromptDe.AppImage}"
+
+if [ ! -x "$app_image" ]; then
+  echo "PromptDe is not installed at $app_image. Run scripts/install-desktop.sh first." >&2
+  exit 1
+fi
+
+exec "$app_image" --class=promptde "$@"

@@ -7,9 +7,12 @@ const HOST = "127.0.0.1";
 const APP_DIR = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(APP_DIR, "public");
 const MAX_JSON_BYTES = 1_000_000;
+const MAX_AUDIO_BYTES = 30_000_000;
 const MAX_API_KEY_LENGTH = 512;
+const PROVIDER_TIMEOUT_MS = 60_000;
+const TRANSCRIPTION_TIMEOUT_MS = 120_000;
 
-export function loadEnvFiles(paths = [join(APP_DIR, ".env"), join(process.cwd(), ".env")]) {
+export function loadEnvFiles(paths = [join(APP_DIR, ".env")]) {
   for (const envPath of [...new Set(paths)]) {
     if (!existsSync(envPath)) continue;
     for (const rawLine of readFileSync(envPath, "utf8").split(/\r?\n/u)) {
@@ -46,15 +49,35 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
-async function readJson(request) {
+function httpError(status, message) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+async function readBody(request, maxBytes, tooLargeMessage) {
+  const declaredLength = Number(request.headers["content-length"]);
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    throw httpError(413, tooLargeMessage);
+  }
+
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > MAX_JSON_BYTES) throw new Error("Request is too large.");
+    if (size > maxBytes) throw httpError(413, tooLargeMessage);
     chunks.push(chunk);
   }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+  return Buffer.concat(chunks);
+}
+
+async function readJson(request) {
+  const body = await readBody(request, MAX_JSON_BYTES, "Request is too large.");
+  try {
+    return JSON.parse(body.toString("utf8") || "{}");
+  } catch {
+    throw httpError(400, "Request body must be valid JSON.");
+  }
 }
 
 function upstreamError(provider, status, raw) {
@@ -69,6 +92,26 @@ function upstreamError(provider, status, raw) {
   error.status = status === 429 ? 429 : 502;
   error.upstreamStatus = status;
   return error;
+}
+
+async function fetchProvider(provider, url, options, timeoutMs = PROVIDER_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  timeout.unref?.();
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (!controller.signal.aborted) throw error;
+    const timeoutError = new Error(`${provider} timed out.`);
+    timeoutError.status = 504;
+    timeoutError.upstreamStatus = 504;
+    throw timeoutError;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function requestApiKey(request, provider) {
@@ -89,16 +132,16 @@ async function transcribe(request, response) {
   if (!contentType.startsWith("multipart/form-data")) {
     return sendJson(response, 415, { error: "Expected multipart audio data." });
   }
+  const audioBody = await readBody(request, MAX_AUDIO_BYTES, "Audio upload is too large.");
 
-  const upstream = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+  const upstream = await fetchProvider("Groq transcription", "https://api.groq.com/openai/v1/audio/transcriptions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${apiKey}`,
       "content-type": contentType,
     },
-    body: request,
-    duplex: "half",
-  });
+    body: audioBody,
+  }, TRANSCRIPTION_TIMEOUT_MS);
 
   const raw = await upstream.text();
   if (!upstream.ok) throw upstreamError("Groq transcription", upstream.status, raw);
@@ -162,7 +205,7 @@ function userCompilerInput({ transcript, context, mode }) {
 }
 
 async function compileWithGroq(apiKey, body) {
-  const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const upstream = await fetchProvider("Groq prompt compiler", "https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${apiKey}`,
@@ -189,7 +232,8 @@ async function compileWithGroq(apiKey, body) {
 
 async function compileWithGemini(apiKey, body) {
   const model = encodeURIComponent(body.model || "gemini-3.5-flash");
-  const upstream = await fetch(
+  const upstream = await fetchProvider(
+    "Gemini prompt compiler",
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
@@ -236,7 +280,7 @@ Rules:
 }
 
 async function translateWithGroq(apiKey, body) {
-  const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const upstream = await fetchProvider("Groq translator", "https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${apiKey}`,
@@ -259,7 +303,8 @@ async function translateWithGroq(apiKey, body) {
 
 async function translateWithGemini(apiKey, body) {
   const model = encodeURIComponent(body.model || "gemini-3.5-flash");
-  const upstream = await fetch(
+  const upstream = await fetchProvider(
+    "Gemini translator",
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
@@ -294,7 +339,7 @@ async function translate(request, response) {
     : "english";
   body.tone = ["natural", "formal", "informal"].includes(body.tone) ? body.tone : "natural";
 
-  let providerUsed = body.provider === "groq" ? "groq" : "gemini";
+  let providerUsed = body.provider === "gemini" ? "gemini" : "groq";
   const apiKey = requestApiKey(request, providerUsed);
   if (!apiKey) return sendJson(response, 400, { error: "A translation provider API key is required." });
 
@@ -401,21 +446,34 @@ function serveStatic(pathname, response) {
   const requested = pathname === "/" ? "/index.html" : pathname;
   const safePath = normalize(requested).replace(/^(\.\.[/\\])+/, "");
   const filePath = join(PUBLIC_DIR, safePath);
-  if (!filePath.startsWith(PUBLIC_DIR) || !existsSync(filePath) || !statSync(filePath).isFile()) {
+  const isInsidePublicDirectory = filePath === PUBLIC_DIR || filePath.startsWith(`${PUBLIC_DIR}/`);
+  if (!isInsidePublicDirectory || !existsSync(filePath) || !statSync(filePath).isFile()) {
     return sendJson(response, 404, { error: "Not found." });
   }
   response.writeHead(200, {
     "content-type": MIME_TYPES[extname(filePath)] || "application/octet-stream",
     "cache-control": "no-cache",
+    "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; media-src blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    "referrer-policy": "no-referrer",
+    "x-frame-options": "DENY",
     "x-content-type-options": "nosniff",
   });
   createReadStream(filePath).pipe(response);
+}
+
+function requestOriginAllowed(request) {
+  const origin = request.headers.origin;
+  if (!origin) return true;
+  return origin === `http://${request.headers.host}`;
 }
 
 export function createPromptDeServer() {
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url, `http://${request.headers.host || HOST}`);
+      if (url.pathname.startsWith("/api/") && !requestOriginAllowed(request)) {
+        return sendJson(response, 403, { error: "Request origin is not allowed." });
+      }
       if (request.method === "POST" && url.pathname === "/api/transcribe") {
         return await transcribe(request, response);
       }
@@ -434,13 +492,13 @@ export function createPromptDeServer() {
       if (request.method === "GET") return serveStatic(url.pathname, response);
       sendJson(response, 405, { error: "Method not allowed." });
     } catch (error) {
-      console.error(error.message);
+      if (!error.status || error.status >= 500) console.error(error.message);
       let message = "Something went wrong. Please try again.";
       if (error.allProvidersFailed) {
         message = "Both prompt providers are temporarily unavailable. Please wait a moment and try again.";
       } else if ([401, 403].includes(error.upstreamStatus)) {
         message = "A provider rejected its API key. Check the key in Settings and try again.";
-      } else if (error.upstreamStatus === 429) {
+      } else if ([429, 500, 502, 503, 504].includes(error.upstreamStatus)) {
         message = "The provider is temporarily busy. Please wait a moment and try again.";
       } else if (error.status && !error.upstreamStatus) {
         message = error.message;

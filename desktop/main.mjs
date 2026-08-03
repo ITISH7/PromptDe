@@ -38,6 +38,8 @@ let tray;
 let localServer;
 let isQuitting = false;
 let selectedRewriteBusy = false;
+let activeNotification;
+let notificationTimer;
 
 function loadShortcutConfig() {
   SHORTCUT = process.env.PROMPTDE_SHORTCUT || process.env.BOLPROMPT_SHORTCUT || "CommandOrControl+Shift+Space";
@@ -67,7 +69,23 @@ function runCommand(command, args) {
 }
 
 function notifyDesktop(body) {
-  if (Notification.isSupported()) new Notification({ title: "PromptDe", body }).show();
+  if (!Notification.isSupported()) return;
+
+  // Keep progress messages useful without letting Linux docks accumulate an
+  // unread counter for every stage of a shortcut workflow.
+  clearTimeout(notificationTimer);
+  const previousNotification = activeNotification;
+  activeNotification = undefined;
+  previousNotification?.close();
+  app.setBadgeCount(0);
+  const notification = new Notification({ title: "PromptDe", body, silent: true });
+  activeNotification = notification;
+  notification.on("close", () => {
+    if (activeNotification === notification) activeNotification = undefined;
+    app.setBadgeCount(0);
+  });
+  notification.show();
+  notificationTimer = setTimeout(() => notification.close(), 6000);
 }
 
 function clipboardSnapshot() {
@@ -222,7 +240,7 @@ function ensureDesktopEnv() {
   mkdirSync(configDir, { recursive: true });
   if (!existsSync(envPath) && existsSync(legacyEnvPath)) copyFileSync(legacyEnvPath, envPath);
   if (!existsSync(envPath)) writeFileSync(envPath, ENV_TEMPLATE, { mode: 0o600 });
-  loadEnvFiles([join(process.cwd(), ".env"), envPath]);
+  loadEnvFiles([envPath]);
   return { configDir, envPath };
 }
 
@@ -254,6 +272,9 @@ function saveDesktopApiKeys(envPath, input = {}) {
 
 function showWindow() {
   if (!mainWindow) return;
+  clearTimeout(notificationTimer);
+  activeNotification?.close();
+  app.setBadgeCount(0);
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.show();
   app.focus({ steal: true });

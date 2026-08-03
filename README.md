@@ -5,7 +5,7 @@ PromptDe turns spoken or typed Hindi, English, and Hinglish ideas into structure
 ## Features
 
 - Transcribes microphone recordings with Groq Whisper.
-- Compiles transcripts with Gemini or Groq into concise, structured prompts.
+- Compiles transcripts with Groq by default or Gemini when selected.
 - Translates speech into natural, formal, or informal English/Hindi and pastes it at the active cursor.
 - Translates text selected in any application to English and replaces it in place.
 - Converts selected text into Quick, Standard, or Detailed prompts and replaces it in place.
@@ -23,7 +23,7 @@ PromptDe uses Node.js ES modules and the built-in HTTP server for its backend, p
 
 Before starting, install or obtain:
 
-- [Node.js](https://nodejs.org/) 18.17 or newer, including npm.
+- [Node.js](https://nodejs.org/) 22.12 or newer, including npm.
 - A microphone and permission to use it if you want speech input.
 - A [Groq API key](https://console.groq.com/keys) for speech transcription.
 - A [Gemini API key](https://aistudio.google.com/app/apikey) if you want to use the default Gemini prompt compiler. Alternatively, Groq can handle both transcription and prompt compilation.
@@ -34,6 +34,36 @@ No API keys are needed to run the automated tests.
 On Debian/Ubuntu X11 systems, install the paste helper with `sudo apt install xdotool`. On Wayland systems that support virtual-keyboard input, use `sudo apt install wtype` instead.
 
 ## Installation
+
+### Install the desktop app directly
+
+Linux (64-bit Intel/AMD, no root access required):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ITISH7/PromptDe/main/scripts/install-desktop.sh | sh
+```
+
+The Linux installer detects the operating system and architecture, downloads the
+latest AppImage, and adds PromptDe to the current user's application menu. It
+uses AppImage extraction mode so installation does not depend on FUSE.
+
+Windows (64-bit, PowerShell):
+
+```powershell
+$script = "$env:TEMP\install-promptde.ps1"
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/ITISH7/PromptDe/main/scripts/install-desktop.ps1 -OutFile $script
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script
+```
+
+The Windows script downloads and starts the latest published NSIS installer.
+It supports Windows PowerShell 5.1 and modern PowerShell, installs per user
+without administrator access, and creates Start menu and desktop shortcuts.
+Both scripts stop with a clear message on unsupported systems.
+
+Tagged builds are published as permanent GitHub Release assets so these
+installers do not depend on expiring GitHub Actions artifacts.
+
+### Install from source
 
 1. Clone the repository and enter it:
 
@@ -80,7 +110,13 @@ PromptDe supports two ways to provide API keys.
    PROMPTDE_SELECTED_DETAILED_PROMPT_SHORTCUT=CommandOrControl+Shift+F8
    ```
 
-`GROQ_API_KEY` is required for recording. `GEMINI_API_KEY` is required only when Gemini is selected for compilation or translation. `PORT` is optional and defaults to `4173` for the web server. The `PROMPTDE_*_SHORTCUT` values optionally change the corresponding desktop shortcuts. If both provider keys are present, PromptDe can fail over to the other provider after a temporary compiler error.
+`GROQ_API_KEY` is required for recording and is also the default prompt compiler
+key. `GEMINI_API_KEY` is optional and required only when Gemini is explicitly
+selected for compilation or translation. If the selected provider has no key,
+PromptDe automatically uses the configured provider. `PORT` is optional and
+defaults to `4173` for the web server. The `PROMPTDE_*_SHORTCUT` values optionally
+change the corresponding desktop shortcuts. If both provider keys are present,
+PromptDe can fail over to the other provider after a temporary compiler error.
 
 The repository ignores `.env`; never commit real credentials.
 

@@ -22,7 +22,7 @@
     "pack:windows:portable": "electron-builder --win zip"
   },
   "engines": {
-    "node": ">=18.17"
+    "node": ">=22.12.0"
   },
   "devDependencies": {
     "electron": "^43.1.1",
@@ -61,11 +61,17 @@
     },
     "win": {
       "icon": "assets/icon.ico",
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
       "target": ["nsis"]
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PromptDe",
+      "runAfterFinish": true
     }
   }
 }

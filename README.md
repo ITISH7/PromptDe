@@ -40,7 +40,7 @@ On Debian/Ubuntu X11 systems, install the paste helper with `sudo apt install xd
 Linux (64-bit Intel/AMD, no root access required):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ITISH7/PromptDe/main/scripts/install-desktop.sh | sh
+curl -fsSL https://raw.githubusercontent.com/ITISH7/PromptDe/HEAD/scripts/install-desktop.sh | sh
 ```
 
 The Linux installer detects the operating system and architecture, downloads the
@@ -51,7 +51,7 @@ Windows (64-bit, PowerShell):
 
 ```powershell
 $script = "$env:TEMP\install-promptde.ps1"
-Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/ITISH7/PromptDe/main/scripts/install-desktop.ps1 -OutFile $script
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/ITISH7/PromptDe/HEAD/scripts/install-desktop.ps1 -OutFile $script
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script
 ```
 
@@ -62,6 +62,10 @@ Both scripts stop with a clear message on unsupported systems.
 
 Tagged builds are published as permanent GitHub Release assets so these
 installers do not depend on expiring GitHub Actions artifacts.
+For a warning-free Windows installation, configure the repository secrets
+`WINDOWS_CSC_LINK` and `WINDOWS_CSC_KEY_PASSWORD` with a trusted code-signing
+certificate. Unsigned development builds can trigger Microsoft Defender
+SmartScreen.
 
 ### Install from source
 
@@ -75,10 +79,13 @@ installers do not depend on expiring GitHub Actions artifacts.
 2. Install the exact dependency versions recorded in `package-lock.json`:
 
    ```bash
+   node --version
    npm ci
    ```
 
-   Use `npm install` instead when intentionally updating dependencies.
+   The Node version must be 22.12 or newer. If you use `nvm`, run `nvm use`
+   first; the included `.nvmrc` selects Node 22. Use `npm install` instead when
+   intentionally updating dependencies.
 
 ## Configuration
 

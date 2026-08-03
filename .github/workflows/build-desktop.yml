@@ -2,6 +2,11 @@ name: Build desktop installers
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional version tag matching package.json, for example v0.1.4"
+        required: false
+        type: string
   push:
     tags:
       - "v*"
@@ -28,7 +33,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run ${{ matrix.command }}
+      - name: Build desktop package
+        run: npm run ${{ matrix.command }}
+        env:
+          CSC_LINK: ${{ matrix.os == 'windows-latest' && secrets.WINDOWS_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'windows-latest' && secrets.WINDOWS_CSC_KEY_PASSWORD || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: promptde-${{ matrix.artifact }}
@@ -39,7 +48,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -51,8 +60,9 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.release_tag }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
-            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 ||
+            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --generate-notes
           find release-assets -type f -print0 |
-            xargs -0 gh release upload "$GITHUB_REF_NAME" --clobber
+            xargs -0 gh release upload "$RELEASE_TAG" --clobber

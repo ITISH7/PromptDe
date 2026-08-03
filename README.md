@@ -65,7 +65,17 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script
 The Windows script downloads and starts the latest published NSIS installer.
 It supports Windows PowerShell 5.1 and modern PowerShell, installs per user
 without administrator access, and creates Start menu and desktop shortcuts.
-Both scripts stop with a clear message on unsupported systems.
+
+macOS:
+
+- [Apple Silicon (M1/M2/M3/M4 and newer)](https://github.com/ITISH7/PromptDe/releases/latest/download/PromptDe-mac-arm64.dmg)
+- [Intel Mac](https://github.com/ITISH7/PromptDe/releases/latest/download/PromptDe-mac-x64.dmg)
+
+Open the downloaded DMG and drag PromptDe into Applications. These initial Mac
+builds are not notarized, so on first launch control-click PromptDe, choose
+**Open**, and confirm. Node.js, npm, and Git are not required on the Mac.
+
+The installer scripts stop with a clear message on unsupported systems.
 
 Tagged builds are published as permanent GitHub Release assets so these
 installers do not depend on expiring GitHub Actions artifacts.
@@ -213,7 +223,7 @@ Create Linux AppImage and Debian packages:
 
 ```bash
 npm run pack:linux
-sudo dpkg -i dist/promptde_0.1.5_amd64.deb
+sudo dpkg -i dist/promptde_0.1.6_amd64.deb
 sudo apt --fix-broken install
 ```
 
@@ -229,7 +239,17 @@ Create a portable Windows ZIP:
 npm run pack:windows:portable
 ```
 
-Generated packages are written to `dist/`. The release build workflow creates native Linux and Windows artifacts for version tags. The CI workflow installs dependencies, validates syntax, and runs tests for pushes and pull requests targeting `main`.
+Create Intel and Apple Silicon macOS DMGs (must run on macOS after generating
+`build/icon.icns`, which GitHub Actions does automatically):
+
+```bash
+npm run pack:mac
+```
+
+Generated packages are written to `dist/`. The release build workflow creates
+native Linux, Windows, and macOS artifacts for version tags. The CI workflow
+installs dependencies, validates syntax, and runs tests for pushes and pull
+requests targeting `main`.
 
 ## Project structure
 

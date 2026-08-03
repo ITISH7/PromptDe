@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Optional version tag matching package.json, for example v0.1.5"
+        description: "Optional version tag matching package.json, for example v0.1.6"
         required: false
         type: string
   push:
@@ -27,6 +27,9 @@ jobs:
           - os: windows-latest
             command: pack:windows
             artifact: windows
+          - os: macos-latest
+            command: pack:mac
+            artifact: macos
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +40,22 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Prepare macOS icon
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          mkdir -p build/icon.iconset
+          sips -z 16 16 assets/icon.png --out build/icon.iconset/icon_16x16.png
+          sips -z 32 32 assets/icon.png --out build/icon.iconset/icon_16x16@2x.png
+          sips -z 32 32 assets/icon.png --out build/icon.iconset/icon_32x32.png
+          sips -z 64 64 assets/icon.png --out build/icon.iconset/icon_32x32@2x.png
+          sips -z 128 128 assets/icon.png --out build/icon.iconset/icon_128x128.png
+          sips -z 256 256 assets/icon.png --out build/icon.iconset/icon_128x128@2x.png
+          sips -z 256 256 assets/icon.png --out build/icon.iconset/icon_256x256.png
+          sips -z 512 512 assets/icon.png --out build/icon.iconset/icon_256x256@2x.png
+          sips -z 512 512 assets/icon.png --out build/icon.iconset/icon_512x512.png
+          sips -z 1024 1024 assets/icon.png --out build/icon.iconset/icon_512x512@2x.png
+          iconutil -c icns build/icon.iconset -o build/icon.icns
       - name: Build desktop package
         # electron-builder downloads platform tools during packaging. Retry once
         # so a transient GitHub/CDN connection does not lose the whole release.
@@ -48,6 +67,7 @@ jobs:
             dist/*.AppImage
             dist/*.deb
             dist/*.exe
+            dist/*.dmg
           if-no-files-found: error
 
   release:
@@ -71,6 +91,7 @@ jobs:
             release-assets/**/*.AppImage
             release-assets/**/*.deb
             release-assets/**/*.exe
+            release-assets/**/*.dmg
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}

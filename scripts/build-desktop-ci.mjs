@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 
-const allowedCommands = new Set(["pack:linux", "pack:windows"]);
+const allowedCommands = new Set(["pack:linux", "pack:mac", "pack:windows"]);
 const command = process.argv[2];
 
 if (!allowedCommands.has(command)) {

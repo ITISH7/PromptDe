@@ -1,6 +1,6 @@
 {
   "name": "promptde",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "type": "module",
   "main": "desktop/main.mjs",
@@ -21,7 +21,9 @@
     "pack:linux": "electron-builder --linux AppImage deb --publish never",
     "prepack:windows": "node scripts/check-build-environment.mjs",
     "pack:windows": "electron-builder --win nsis --publish never",
-    "pack:windows:portable": "electron-builder --win zip --publish never"
+    "pack:windows:portable": "electron-builder --win zip --publish never",
+    "prepack:mac": "node scripts/check-build-environment.mjs",
+    "pack:mac": "electron-builder --mac dmg --x64 --arm64 --publish never"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -65,6 +67,16 @@
       "icon": "assets/icon.ico",
       "artifactName": "${productName}-Setup-${arch}.${ext}",
       "target": ["nsis"]
+    },
+    "mac": {
+      "icon": "build/icon.icns",
+      "artifactName": "${productName}-mac-${arch}.${ext}",
+      "category": "public.app-category.utilities",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "PromptDe uses the microphone to turn your voice into prompts.",
+        "NSSpeechRecognitionUsageDescription": "PromptDe uses speech recognition to transcribe spoken prompts."
+      },
+      "target": ["dmg"]
     },
     "nsis": {
       "oneClick": false,

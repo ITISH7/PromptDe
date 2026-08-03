@@ -33,6 +33,17 @@ No API keys are needed to run the automated tests.
 
 On Debian/Ubuntu X11 systems, install the paste helper with `sudo apt install xdotool`. On Wayland systems that support virtual-keyboard input, use `sudo apt install wtype` instead.
 
+### Chromium sandbox on Linux
+
+npm cannot set setuid bits, so `npm install` leaves Electron's `chrome-sandbox` helper unprivileged. On distributions that restrict unprivileged user namespaces, such as Ubuntu 24.04 and newer, Chromium then aborts at startup. `npm run desktop` detects the unprivileged helper, reports the commands below, and retries without the Chromium sandbox rather than failing on a cryptic Chromium error. Grant the helper the permissions it expects so the sandbox stays enabled:
+
+```bash
+sudo chown root:root node_modules/electron/dist/chrome-sandbox
+sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+```
+
+Run `chmod` after `chown`, because changing ownership clears the setuid bit. Reinstalling dependencies resets the helper, so repeat both commands after any `npm install` or `npm ci` that replaces Electron. Packages built with `npm run pack:linux` are unaffected, because the system installer places the helper with the correct ownership and mode.
+
 ## Installation
 
 1. Clone the repository and enter it:

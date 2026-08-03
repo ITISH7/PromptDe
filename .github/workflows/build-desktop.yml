@@ -67,5 +67,7 @@ jobs:
         run: |
           gh release view "$RELEASE_TAG" >/dev/null 2>&1 ||
             gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --generate-notes
-          find release-assets -type f -print0 |
-            xargs -0 gh release upload "$RELEASE_TAG" --clobber
+          while IFS= read -r -d '' asset; do
+            echo "Uploading $(basename "$asset")"
+            gh release upload "$RELEASE_TAG" "$asset" --clobber
+          done < <(find release-assets -type f -print0)

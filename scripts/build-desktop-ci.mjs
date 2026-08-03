@@ -15,6 +15,8 @@ for (let attempt = 1; attempt <= 2; attempt += 1) {
 
   const result = spawnSync(npmExecutable, ["run", command], {
     env: process.env,
+    // Windows cannot launch a .cmd shim directly through CreateProcess.
+    shell: process.platform === "win32",
     stdio: "inherit",
   });
 

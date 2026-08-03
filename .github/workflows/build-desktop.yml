@@ -17,6 +17,8 @@ permissions:
 jobs:
   build:
     strategy:
+      # One platform failing must not cancel the other installer.
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -34,10 +36,9 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build desktop package
-        run: npm run ${{ matrix.command }}
-        env:
-          CSC_LINK: ${{ matrix.os == 'windows-latest' && secrets.WINDOWS_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.os == 'windows-latest' && secrets.WINDOWS_CSC_KEY_PASSWORD || '' }}
+        # electron-builder downloads platform tools during packaging. Retry once
+        # so a transient GitHub/CDN connection does not lose the whole release.
+        run: node scripts/build-desktop-ci.mjs ${{ matrix.command }}
       - uses: actions/upload-artifact@v4
         with:
           name: promptde-${{ matrix.artifact }}

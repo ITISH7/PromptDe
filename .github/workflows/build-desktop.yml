@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Optional version tag matching package.json, for example v0.1.4"
+        description: "Optional version tag matching package.json, for example v0.1.5"
         required: false
         type: string
   push:
@@ -65,9 +65,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.release_tag }}
         run: |
-          gh release view "$RELEASE_TAG" >/dev/null 2>&1 ||
-            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --generate-notes
+          set -Eeuo pipefail
+
+          release_state="$(
+            gh release view "$RELEASE_TAG" \
+              --json isDraft,assets \
+              --jq '[.isDraft, (.assets | length)] | @tsv' 2>/dev/null || true
+          )"
+
+          if [[ -z "$release_state" ]]; then
+            gh release create "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --generate-notes \
+              --draft
+          elif [[ "$release_state" != true$'\t'* ]]; then
+            echo "Release $RELEASE_TAG is already published; leaving it unchanged."
+            exit 0
+          fi
+
           while IFS= read -r -d '' asset; do
             echo "Uploading $(basename "$asset")"
             gh release upload "$RELEASE_TAG" "$asset" --clobber
           done < <(find release-assets -type f -print0)
+
+          gh release edit "$RELEASE_TAG" --draft=false

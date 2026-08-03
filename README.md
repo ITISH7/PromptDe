@@ -213,7 +213,7 @@ Create Linux AppImage and Debian packages:
 
 ```bash
 npm run pack:linux
-sudo dpkg -i dist/promptde_0.1.4_amd64.deb
+sudo dpkg -i dist/promptde_0.1.5_amd64.deb
 sudo apt --fix-broken install
 ```
 

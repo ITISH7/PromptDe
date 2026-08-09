@@ -1,6 +1,6 @@
 {
   "name": "promptde",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "type": "module",
   "main": "desktop/main.mjs",
@@ -17,6 +17,7 @@
     "check": "node --check server.mjs && node --check public/app.js && node --check desktop/main.mjs && node --check desktop/preload.cjs && node --check desktop/launch.cjs && node --check scripts/check-build-environment.mjs && node --check scripts/build-desktop-ci.mjs && node --check test/server.test.mjs",
     "lint": "npm run check",
     "test": "node --test",
+    "test:deb": "sh scripts/test-linux-deb.sh",
     "prepack:linux": "node scripts/check-build-environment.mjs",
     "pack:linux": "electron-builder --linux AppImage deb --publish never",
     "prepack:windows": "node scripts/check-build-environment.mjs",
@@ -29,7 +30,7 @@
     "node": ">=22.12.0"
   },
   "devDependencies": {
-    "electron": "^43.1.1",
+    "electron": "^43.3.0",
     "electron-builder": "26.15.7"
   },
   "build": {
@@ -54,9 +55,32 @@
       "icon": "assets/icon.png",
       "maintainer": "PromptDe Contributors <support@promptde.local>",
       "syncDesktopName": true,
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     },
     "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libgbm1",
+        "libasound2",
+        "x11-utils",
+        "xdg-desktop-portal",
+        "xdotool",
+        "wtype"
+      ],
+      "recommends": [
+        "libappindicator3-1"
+      ],
       "desktop": {
         "entry": {
           "Icon": "/opt/PromptDe/resources/icon.png"
@@ -66,7 +90,9 @@
     "win": {
       "icon": "assets/icon.ico",
       "artifactName": "${productName}-Setup-${arch}.${ext}",
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "mac": {
       "icon": "build/icon.icns",
@@ -76,7 +102,9 @@
         "NSMicrophoneUsageDescription": "PromptDe uses the microphone to turn your voice into prompts.",
         "NSSpeechRecognitionUsageDescription": "PromptDe uses speech recognition to transcribe spoken prompts."
       },
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "nsis": {
       "oneClick": false,

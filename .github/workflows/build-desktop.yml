@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Optional version tag matching package.json, for example v0.1.6"
+        description: "Optional version tag matching package.json, for example v0.1.7"
         required: false
         type: string
   push:
@@ -77,21 +77,38 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: release-assets
+      - name: Add dependency-aware Linux installer
+        shell: bash
+        run: |
+          cp scripts/install-desktop.sh release-assets/install-promptde-linux.sh
+          chmod 755 release-assets/install-promptde-linux.sh
       - name: Upload installers to draft release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.release_tag }}
           draft: true
           generate_release_notes: true
+          body: |
+            ## Linux installation
+
+            Use the Debian package where supported, or run the dependency-aware installer:
+
+            ```sh
+            curl -fsSL https://github.com/ITISH7/PromptDe/releases/latest/download/install-promptde-linux.sh | sh
+            ```
+
+            The installer detects X11 or Wayland and installs missing shortcut helpers. Existing dependencies are left untouched.
           fail_on_unmatched_files: true
           files: |
             release-assets/**/*.AppImage
             release-assets/**/*.deb
             release-assets/**/*.exe
             release-assets/**/*.dmg
+            release-assets/install-promptde-linux.sh
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}

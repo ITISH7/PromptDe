@@ -27,25 +27,29 @@ Before starting, install or obtain:
 - A microphone and permission to use it if you want speech input.
 - A [Groq API key](https://console.groq.com/keys) for speech transcription.
 - A [Gemini API key](https://aistudio.google.com/app/apikey) if you want to use the default Gemini prompt compiler. Alternatively, Groq can handle both transcription and prompt compilation.
-- On Linux, `xdotool` for automatic paste on X11 or `wtype` on Wayland. Translation still falls back to the clipboard when neither command is available.
+- On Linux, PromptDe uses `xdotool` and `xprop` on X11, or `wtype` and `xdg-desktop-portal` on Wayland, for its global shortcut workflows. The Debian package declares them as dependencies, and the AppImage installer detects the active display system and installs only missing helpers.
 
 No API keys are needed to run the automated tests.
 
-On Debian/Ubuntu X11 systems, install the paste helper with `sudo apt install xdotool`. On Wayland systems that support virtual-keyboard input, use `sudo apt install wtype` instead.
+For source installations on Debian/Ubuntu, install the helpers with `sudo apt install xdotool x11-utils` on X11 or `sudo apt install wtype xdg-desktop-portal` on Wayland. Generated text still falls back to the clipboard if a compositor prevents automatic paste.
 
 ## Installation
 
 ### Install the desktop app directly
 
-Linux (64-bit Intel/AMD, no root access required):
+Linux (64-bit Intel/AMD; the app is installed per-user, while missing system helpers may require administrator access):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ITISH7/PromptDe/HEAD/scripts/install-desktop.sh | sh
+curl -fsSL https://github.com/ITISH7/PromptDe/releases/latest/download/install-promptde-linux.sh | sh
 ```
 
 The Linux installer detects the operating system and architecture, downloads the
 latest AppImage, and adds PromptDe to the current user's application menu. It
-uses AppImage extraction mode so installation does not depend on FUSE.
+uses AppImage extraction mode so installation does not depend on FUSE. Before
+downloading PromptDe, it checks the active X11 or Wayland session and skips
+shortcut helpers that are already installed. Missing helpers are installed with
+`apt`, `dnf`, `pacman`, or `zypper`; this may request administrator access. Set
+`PROMPTDE_SKIP_SYSTEM_DEPENDENCIES=1` only when managing those packages yourself.
 
 Windows (64-bit, PowerShell):
 
@@ -223,9 +227,13 @@ Create Linux AppImage and Debian packages:
 
 ```bash
 npm run pack:linux
-sudo dpkg -i dist/promptde_0.1.6_amd64.deb
-sudo apt --fix-broken install
+sudo apt install ./dist/promptde_0.1.7_amd64.deb
 ```
+
+Using `apt install` for the local package installs PromptDe's required native
+libraries and its X11/Wayland shortcut helpers, while automatically skipping
+packages already present. Run `npm run test:deb`
+after packaging to verify the `.deb` in a clean Ubuntu X11 container.
 
 Create a Windows NSIS installer (normally on Windows or a configured cross-build host):
 

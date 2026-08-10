@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { request as httpRequest } from "node:http";
+import { win32 } from "node:path";
 import { after, before, test } from "node:test";
-import { startServer } from "../server.mjs";
+import { isPathInsideDirectory, startServer } from "../server.mjs";
 
 let baseUrl;
 let server;
@@ -67,11 +68,34 @@ function postRaw(path, body, headers = {}) {
 }
 
 test("serves the web application", async () => {
-  const response = await fetch(`${baseUrl}/`);
+  const [response, stylesheet, script] = await Promise.all([
+    fetch(`${baseUrl}/`),
+    fetch(`${baseUrl}/styles.css`),
+    fetch(`${baseUrl}/app.js`),
+  ]);
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type"), /^text\/html/u);
   assert.match(await response.text(), /<title>PromptDe/u);
+  assert.equal(stylesheet.status, 200);
+  assert.match(stylesheet.headers.get("content-type"), /^text\/css/u);
+  assert.match(await stylesheet.text(), /--orange:/u);
+  assert.equal(script.status, 200);
+  assert.match(script.headers.get("content-type"), /^text\/javascript/u);
+  assert.match(await script.text(), /promptDeDesktop/u);
+});
+
+test("accepts packaged static files when Windows uses backslash separators", () => {
+  const publicDirectory = "C:\\Program Files\\PromptDe\\resources\\app.asar\\public";
+
+  assert.equal(
+    isPathInsideDirectory(publicDirectory, `${publicDirectory}\\index.html`, win32),
+    true,
+  );
+  assert.equal(
+    isPathInsideDirectory(publicDirectory, "C:\\Program Files\\PromptDe\\resources\\secret.txt", win32),
+    false,
+  );
 });
 
 test("reports provider configuration without exposing keys", async () => {

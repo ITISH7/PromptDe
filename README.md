@@ -51,7 +51,7 @@ shortcut helpers that are already installed. Missing helpers are installed with
 `apt`, `dnf`, `pacman`, or `zypper`; this may request administrator access. Set
 `PROMPTDE_SKIP_SYSTEM_DEPENDENCIES=1` only when managing those packages yourself.
 
-Windows (64-bit, PowerShell):
+Windows (64-bit, Windows 10 or newer):
 
 Download and open the installer:
 
@@ -69,6 +69,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script
 The Windows script downloads and starts the latest published NSIS installer.
 It supports Windows PowerShell 5.1 and modern PowerShell, installs per user
 without administrator access, and creates Start menu and desktop shortcuts.
+
+If PromptDe cannot load its interface, it now shows a startup error instead of
+leaving a blank window. Diagnostic details are written to
+`%APPDATA%\PromptDe\startup.log`.
 
 macOS:
 
@@ -227,7 +231,7 @@ Create Linux AppImage and Debian packages:
 
 ```bash
 npm run pack:linux
-sudo apt install ./dist/promptde_0.1.7_amd64.deb
+sudo apt install ./dist/promptde_0.1.8_amd64.deb
 ```
 
 Using `apt install` for the local package installs PromptDe's required native

@@ -1,4 +1,4 @@
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFile } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,6 +6,7 @@ import {
   app,
   BrowserWindow,
   clipboard,
+  dialog,
   globalShortcut,
   ipcMain,
   Menu,
@@ -40,6 +41,31 @@ let isQuitting = false;
 let selectedRewriteBusy = false;
 let activeNotification;
 let notificationTimer;
+let startupLogPath;
+let startupFailureShown = false;
+
+function errorMessage(error) {
+  return error instanceof Error ? `${error.message}\n${error.stack || ""}`.trim() : String(error);
+}
+
+function logStartup(message, error) {
+  const detail = error === undefined ? message : `${message}: ${errorMessage(error)}`;
+  console.error(detail);
+  if (!startupLogPath) return;
+  try {
+    appendFileSync(startupLogPath, `[${new Date().toISOString()}] ${detail}\n`, "utf8");
+  } catch {
+    // Logging must never turn a recoverable startup problem into a crash.
+  }
+}
+
+function reportStartupFailure(message, error) {
+  logStartup(message, error);
+  if (startupFailureShown || isQuitting) return;
+  startupFailureShown = true;
+  const logHint = startupLogPath ? `\n\nDiagnostic log:\n${startupLogPath}` : "";
+  dialog.showErrorBox("PromptDe could not start", `${message}\n\n${errorMessage(error)}${logHint}`);
+}
 
 function loadShortcutConfig() {
   SHORTCUT = process.env.PROMPTDE_SHORTCUT || process.env.BOLPROMPT_SHORTCUT || "CommandOrControl+Shift+Space";
@@ -293,7 +319,7 @@ function showAndSend(channel) {
   mainWindow?.webContents.send(channel);
 }
 
-function createWindow(url) {
+async function createWindow(url) {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 900,
@@ -312,7 +338,16 @@ function createWindow(url) {
     },
   });
 
-  mainWindow.loadURL(url);
+  mainWindow.webContents.on("did-fail-load", (_event, code, description, failedUrl, isMainFrame) => {
+    if (!isMainFrame || code === -3) return;
+    reportStartupFailure(`The PromptDe interface failed to load (${failedUrl}).`, `${description} (${code})`);
+  });
+  mainWindow.webContents.on("render-process-gone", (_event, details) => {
+    reportStartupFailure("The PromptDe interface process stopped unexpectedly.", details.reason);
+  });
+  mainWindow.on("unresponsive", () => {
+    logStartup("The PromptDe window became unresponsive.");
+  });
   mainWindow.once("ready-to-show", () => mainWindow.show());
   mainWindow.on("close", (event) => {
     if (isQuitting) return;
@@ -326,6 +361,7 @@ function createWindow(url) {
   mainWindow.webContents.on("will-navigate", (event, target) => {
     if (!target.startsWith(url)) event.preventDefault();
   });
+  await mainWindow.loadURL(url);
 }
 
 function createTray() {
@@ -364,6 +400,8 @@ if (!hasLock) {
   app.on("second-instance", showWindow);
   app.whenReady().then(async () => {
     const { configDir, envPath } = ensureDesktopEnv();
+    startupLogPath = join(configDir, "startup.log");
+    logStartup(`Starting PromptDe ${app.getVersion()} on ${process.platform} ${process.arch}.`);
     loadShortcutConfig();
     const started = await startServer({ port: 0 });
     localServer = started.server;
@@ -398,7 +436,7 @@ if (!hasLock) {
     ipcMain.on("promptde:show", showWindow);
 
     Menu.setApplicationMenu(null);
-    createWindow(started.url);
+    await createWindow(started.url);
     createTray();
     if (!globalShortcut.register(SHORTCUT, showAndActivate)) {
       console.error(`Could not register global shortcut: ${SHORTCUT}`);
@@ -442,7 +480,7 @@ if (!hasLock) {
       }
     }
   }).catch((error) => {
-    console.error(error);
+    reportStartupFailure("The desktop application could not finish starting.", error);
     app.quit();
   });
 

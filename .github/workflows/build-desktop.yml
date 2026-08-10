@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Optional version tag matching package.json, for example v0.1.7"
+        description: "Optional version tag matching package.json, for example v0.1.8"
         required: false
         type: string
   push:
@@ -40,6 +40,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Validate source and dependencies
+        run: npm run lint
+      - name: Run integration and Windows-path regression tests
+        run: npm test
       - name: Prepare macOS icon
         if: runner.os == 'macOS'
         shell: bash

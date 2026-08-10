@@ -1,6 +1,6 @@
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
-import { dirname, extname, join, normalize, resolve } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HOST = "127.0.0.1";
@@ -442,18 +442,25 @@ async function compile(request, response) {
   });
 }
 
+export function isPathInsideDirectory(directory, candidate, pathApi = { isAbsolute, relative, sep }) {
+  const relativePath = pathApi.relative(directory, candidate);
+  return relativePath !== ""
+    && relativePath !== ".."
+    && !relativePath.startsWith(`..${pathApi.sep}`)
+    && !pathApi.isAbsolute(relativePath);
+}
+
 function serveStatic(pathname, response) {
   const requested = pathname === "/" ? "/index.html" : pathname;
-  const safePath = normalize(requested).replace(/^(\.\.[/\\])+/, "");
-  const filePath = join(PUBLIC_DIR, safePath);
-  const isInsidePublicDirectory = filePath === PUBLIC_DIR || filePath.startsWith(`${PUBLIC_DIR}/`);
+  const filePath = resolve(PUBLIC_DIR, `.${requested}`);
+  const isInsidePublicDirectory = isPathInsideDirectory(PUBLIC_DIR, filePath);
   if (!isInsidePublicDirectory || !existsSync(filePath) || !statSync(filePath).isFile()) {
     return sendJson(response, 404, { error: "Not found." });
   }
   response.writeHead(200, {
     "content-type": MIME_TYPES[extname(filePath)] || "application/octet-stream",
     "cache-control": "no-cache",
-    "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; media-src blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; media-src blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
     "referrer-policy": "no-referrer",
     "x-frame-options": "DENY",
     "x-content-type-options": "nosniff",

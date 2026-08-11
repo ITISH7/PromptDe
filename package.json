@@ -2,6 +2,7 @@
   "name": "promptde",
   "version": "0.1.8",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "main": "desktop/main.mjs",
   "desktopName": "promptde",

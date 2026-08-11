@@ -97,6 +97,13 @@ jobs:
           draft: true
           generate_release_notes: true
           body: |
+            ## Windows installation
+
+            Download and open **PromptDe-Setup-x64.exe**. Current Windows builds may be unsigned, so your browser or Windows SmartScreen can show a warning:
+
+            - If the browser warns that the download is not commonly downloaded, choose **Keep**.
+            - If Windows SmartScreen shows “Windows protected your PC,” choose **More info**, then **Run anyway**.
+
             ## macOS installation
 
             Download the DMG for your Mac, open it, and drag **PromptDe** into **Applications**.

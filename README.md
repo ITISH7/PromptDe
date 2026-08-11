@@ -78,7 +78,10 @@ Set `PROMPTDE_SKIP_SYSTEM_DEPENDENCIES=1` before running the installer only if y
 
 [Download PromptDe for Windows](https://github.com/ITISH7/PromptDe/releases/latest/download/PromptDe-Setup-x64.exe) (Windows 10 or newer, 64-bit), then open the installer.
 
-The per-user installer does not require administrator access. Because development builds may be unsigned, Windows SmartScreen can display a warning.
+The per-user installer does not require administrator access. Current Windows builds may be unsigned, so your browser or Windows SmartScreen can show a warning:
+
+- If the browser warns that the download is not commonly downloaded, choose **Keep**.
+- If Windows SmartScreen shows “Windows protected your PC,” choose **More info**, then **Run anyway**.
 
 <details>
 <summary>Optional PowerShell installer</summary>

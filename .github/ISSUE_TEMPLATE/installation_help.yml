@@ -1,0 +1,83 @@
+name: Installation help
+description: Get help installing or starting PromptDe.
+title: "[Install]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the current installation guide and search existing issues first. Never paste API keys or an unredacted `.env` file.
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Operating system
+      options:
+        - Windows 10 or newer
+        - macOS - Apple Silicon
+        - macOS - Intel
+        - Linux - Debian or Ubuntu
+        - Linux - other distribution
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: method
+    attributes:
+      label: Installation method
+      options:
+        - Windows installer
+        - macOS DMG
+        - Linux installation script
+        - AppImage
+        - Debian package
+        - Source with npm
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: PromptDe version or download URL
+      placeholder: v0.1.8
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command or steps used
+      description: Show exactly what you ran or opened.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Complete error message
+      description: Remove usernames, paths, keys, and other private data before posting.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you tried?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I followed the installation guide for my operating system.
+          required: true
+        - label: I searched existing issues.
+          required: true
+        - label: I removed all API keys and private information.
+          required: true

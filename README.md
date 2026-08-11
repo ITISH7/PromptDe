@@ -4,6 +4,13 @@
   <p><strong>Speak naturally. Build precisely.</strong></p>
   <p>Turn rough Hindi, English, or Hinglish ideas into clear prompts your coding agent can act on.</p>
   <p>
+    <a href="https://github.com/ITISH7/PromptDe/actions/workflows/ci.yml"><img src="https://github.com/ITISH7/PromptDe/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI status" /></a>
+    <a href="https://github.com/ITISH7/PromptDe/releases/latest"><img src="https://img.shields.io/github/v/release/ITISH7/PromptDe?display_name=tag&amp;sort=semver" alt="Latest release" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/ITISH7/PromptDe" alt="MIT license" /></a>
+    <img src="https://img.shields.io/badge/Node.js-%E2%89%A522.12-339933?logo=nodedotjs&amp;logoColor=white" alt="Node.js 22.12 or newer" />
+    <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-59636e" alt="Linux, Windows, and macOS" />
+  </p>
+  <p>
     <a href="https://github.com/ITISH7/PromptDe/releases/latest">Download</a> ·
     <a href="#install-promptde">Installation</a> ·
     <a href="#keyboard-shortcuts">Shortcuts</a> ·
@@ -203,6 +210,15 @@ Linux builds produce AppImage and Debian packages. Windows builds produce an NSI
 ├── server.mjs           Local HTTP server and provider integrations
 └── package.json         npm scripts and desktop packaging configuration
 ```
+
+## Contributing
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup and pull-request guidance, and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+- Report bugs or request features with the [GitHub issue forms](https://github.com/ITISH7/PromptDe/issues/new/choose).
+- Report vulnerabilities privately using the [security policy](SECURITY.md).
+- See planned work in the [roadmap](ROADMAP.md) and released changes in the [changelog](CHANGELOG.md).
+- For installation help, start with the [support guide](SUPPORT.md).
 
 ## License
 

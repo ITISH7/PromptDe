@@ -7,11 +7,22 @@
   "main": "desktop/main.mjs",
   "desktopName": "promptde",
   "description": "Voice-to-agent prompt compiler for Hindi, English, and Hinglish.",
-  "homepage": "https://promptde.local",
-  "author": {
-    "name": "PromptDe Contributors",
-    "email": "support@promptde.local"
+  "homepage": "https://github.com/ITISH7/PromptDe#readme",
+  "author": "Itish Jain",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ITISH7/PromptDe.git"
   },
+  "bugs": {
+    "url": "https://github.com/ITISH7/PromptDe/issues"
+  },
+  "keywords": [
+    "voice",
+    "prompts",
+    "hinglish",
+    "developer-tools",
+    "electron"
+  ],
   "scripts": {
     "start": "node server.mjs",
     "desktop": "node desktop/launch.cjs",

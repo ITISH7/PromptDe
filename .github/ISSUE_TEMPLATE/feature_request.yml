@@ -1,0 +1,64 @@
+name: Feature request
+description: Suggest an improvement to PromptDe.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea. Describe the user problem before proposing implementation details, and check the roadmap and existing issues first.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is difficult today, and who experiences it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should a successful solution let the user do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested approach
+      description: Share a possible interface or implementation if you have one.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: How do you handle this today?
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Voice transcription
+        - Prompt compilation
+        - Translation
+        - Desktop shortcuts and paste
+        - Browser interface
+        - Installation and packaging
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and the roadmap.
+          required: true
+        - label: I have not included API keys or private information.
+          required: true

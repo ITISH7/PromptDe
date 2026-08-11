@@ -1,0 +1,90 @@
+name: Bug report
+description: Report something that is not working as expected.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve PromptDe. Search existing issues first and never include API keys, private transcripts, recordings, clipboard contents, or an unredacted `.env` file.
+
+  - type: input
+    id: version
+    attributes:
+      label: PromptDe version
+      description: Find this in the release name or package metadata.
+      placeholder: v0.1.8
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Windows installer
+        - macOS DMG
+        - Linux installer or AppImage
+        - Debian package
+        - From source - desktop
+        - From source - browser
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment details
+      description: Include OS version and, on Linux, desktop environment plus X11 or Wayland.
+      placeholder: Ubuntu 24.04, GNOME, Wayland
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Explain the problem and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open PromptDe...
+        2. Select...
+        3. Press...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Paste only redacted logs. You can drag screenshots here.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checklist
+      options:
+        - label: I searched existing issues for this problem.
+          required: true
+        - label: I removed API keys and other private information.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

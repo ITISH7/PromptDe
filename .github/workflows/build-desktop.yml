@@ -32,8 +32,8 @@ jobs:
             artifact: macos
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           # app-builder-lib loads an ESM hashing dependency through require().
           # Node 24 supports that bridge reliably on every hosted runner.
@@ -64,7 +64,7 @@ jobs:
         # electron-builder downloads platform tools during packaging. Retry once
         # so a transient GitHub/CDN connection does not lose the whole release.
         run: node scripts/build-desktop-ci.mjs ${{ matrix.command }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: promptde-${{ matrix.artifact }}
           path: |
@@ -81,8 +81,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: release-assets
       - name: Add dependency-aware Linux installer
@@ -91,7 +91,7 @@ jobs:
           cp scripts/install-desktop.sh release-assets/install-promptde-linux.sh
           chmod 755 release-assets/install-promptde-linux.sh
       - name: Upload installers to draft release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.release_tag }}
           draft: true

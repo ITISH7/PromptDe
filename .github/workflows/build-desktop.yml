@@ -97,6 +97,22 @@ jobs:
           draft: true
           generate_release_notes: true
           body: |
+            ## macOS installation
+
+            Download the DMG for your Mac, open it, and drag **PromptDe** into **Applications**.
+
+            Current macOS builds are not notarized. If macOS blocks PromptDe or reports that the app cannot be opened, run:
+
+            ```sh
+            xattr -dr com.apple.quarantine /Applications/PromptDe.app
+            open /Applications/PromptDe.app
+            ```
+
+            If desktop shortcuts cannot copy selected text or paste generated text, enable both permissions and then quit and reopen PromptDe:
+
+            - **System Settings → Privacy & Security → Accessibility → PromptDe**
+            - **System Settings → Privacy & Security → Automation → PromptDe → System Events**
+
             ## Linux installation
 
             Use the Debian package where supported, or run the dependency-aware installer:

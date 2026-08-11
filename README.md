@@ -98,6 +98,18 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script
 
 Open the DMG and drag PromptDe into **Applications**. Current Mac builds are not notarized, so the first launch may require you to Control-click the app, choose **Open**, and confirm.
 
+If macOS blocks PromptDe or reports that the app cannot be opened, remove the quarantine attribute and launch the installed application:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/PromptDe.app
+open /Applications/PromptDe.app
+```
+
+If desktop shortcuts cannot copy selected text or paste generated text, enable both permissions and then quit and reopen PromptDe:
+
+- **System Settings → Privacy & Security → Accessibility → PromptDe**
+- **System Settings → Privacy & Security → Automation → PromptDe → System Events**
+
 ### Install from source
 
 You need [Node.js](https://nodejs.org/) 22.12 or newer and a Groq API key.

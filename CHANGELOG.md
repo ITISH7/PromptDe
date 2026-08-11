@@ -6,10 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-08-11
+
 ### Added
 
 - MIT license and open-source community documentation.
 - User-focused README with an interface screenshot, workflow diagram, and platform installation guides.
+- macOS release and installation troubleshooting for Gatekeeper quarantine, Accessibility, and System Events permissions.
 
 ### Changed
 
@@ -28,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Added dependency-aware installation of Linux global-shortcut helpers for X11 and Wayland.
 
-[Unreleased]: https://github.com/ITISH7/PromptDe/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/ITISH7/PromptDe/compare/v0.1.9...HEAD
+[0.1.9]: https://github.com/ITISH7/PromptDe/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/ITISH7/PromptDe/releases/tag/v0.1.8
 [0.1.7]: https://github.com/ITISH7/PromptDe/releases/tag/v0.1.7

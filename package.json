@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "electron": "43.3.0",
-    "electron-builder": "26.15.7"
+    "electron-builder": "26.16.0"
   },
   "build": {
     "appId": "com.promptde.desktop",
